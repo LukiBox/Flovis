@@ -1,0 +1,29 @@
+# Flovis - zależności
+# UI
+PySide6>=6.6
+pyqtgraph>=0.13
+pyvista>=0.43
+pyvistaqt>=0.11
+
+# Obliczenia / aero
+numpy>=1.26
+scipy>=1.11
+aerosandbox>=4.2          # VLM (domyślny solver 3D)
+neuralfoil>=0.3           # szybka predykcja biegunów 2D (fallback dla XFoil)
+
+# Geometria STEP (metoda panelowa 3D)
+# gmsh ma wbudowany kernel OpenCASCADE i sam czyta/uszczelnia .step,
+# więc pythonocc-core jest OPCJONALNY (przyspiesza naprawę geometrii).
+# pythonocc-core najlepiej z conda:  mamba install -c conda-forge pythonocc-core
+gmsh>=4.12
+
+# Raporty
+matplotlib>=3.8
+reportlab>=4.0
+
+# AI
+ollama>=0.3
+
+# Testy / pakowanie (dev)
+pytest>=8.0
+pyinstaller>=6.0   # budowa pliku .exe:  pyinstaller flovis.spec

@@ -1,0 +1,57 @@
+"""
+Lokalizacja zewnetrznych binarek (XFoil, AVL).
+
+Kolejnosc szukania:
+  1. zmienna srodowiskowa (FLOVIS_XFOIL / FLOVIS_AVL),
+  2. dolaczony katalog resources/bin (dystrybucja Flovis / PyInstaller),
+  3. systemowy PATH.
+
+Dzieki temu aplikacja dziala "od reki" z dolaczonymi binarkami, a zaawansowany
+uzytkownik moze wskazac wlasna wersje przez zmienna srodowiskowa.
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+
+def _bin_dir() -> Path:
+    """Katalog z dolaczonymi binarkami (dziala tez po spakowaniu PyInstaller)."""
+    if getattr(sys, "frozen", False):  # PyInstaller
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        return base / "resources" / "bin"
+    # flovis/core/binaries.py -> flovis/resources/bin
+    return Path(__file__).resolve().parents[1] / "resources" / "bin"
+
+
+def find_binary(name: str, env_var: str | None = None) -> str | None:
+    """
+    Zwraca sciezke do binarki lub None, jesli nie znaleziono.
+
+    name     - bazowa nazwa, np. "xfoil" (rozszerzenie .exe dodawane na Windows)
+    env_var  - opcjonalna zmienna srodowiskowa wskazujaca pelna sciezke
+    """
+    exe = name + (".exe" if os.name == "nt" else "")
+
+    if env_var and os.environ.get(env_var):
+        p = Path(os.environ[env_var])
+        if p.exists():
+            return str(p)
+
+    candidate = _bin_dir() / exe
+    if candidate.exists():
+        return str(candidate)
+
+    # systemowy PATH
+    found = shutil.which(name) or shutil.which(exe)
+    return found
+
+
+def xfoil_path() -> str | None:
+    return find_binary("xfoil", "FLOVIS_XFOIL")
+
+
+def avl_path() -> str | None:
+    return find_binary("avl", "FLOVIS_AVL")
