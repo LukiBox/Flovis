@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# commit-msg hook: strip any AI attribution from commit messages automatically.
+# Enable with:  git config core.hooksPath scripts/githooks
+#
+# Removes lines like:
+#   Co-Authored-By: Claude ... <noreply@anthropic.com>
+#   Generated with [Claude Code](...)
+#   🤖 Generated with ...
+msg_file="$1"
+tmp="$(mktemp)"
+
+grep -viE \
+  '(co-authored-by:[[:space:]]*.*(claude|anthropic|openai|chatgpt|gpt|copilot|gemini|cursor)|generated with[[:space:]]*(\[)?(claude|ai\b|gpt|copilot)|🤖[[:space:]]*generated|assisted by[[:space:]]*(claude|ai\b)|via[[:space:]]*claude[[:space:]]*code)' \
+  "$msg_file" > "$tmp"
+
+# collapse trailing blank lines left behind
+sed -e :a -e '/^[[:space:]]*$/{$d;N;ba}' "$tmp" > "$msg_file"
+rm -f "$tmp"
+exit 0
