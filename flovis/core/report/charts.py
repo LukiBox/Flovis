@@ -1,4 +1,4 @@
-"""Wykresy do raportow (matplotlib) - styl minimalistyczny."""
+"""Report charts (matplotlib) - minimalist style."""
 from __future__ import annotations
 
 import io
@@ -33,14 +33,14 @@ def cl_alpha_png(res) -> bytes:
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     ax.plot(res.alpha_deg, res.CL, "-o", color=_ACCENT, ms=3, lw=1.6)
     ax.axhline(0, color="#9ca3af", lw=0.6)
-    _style(ax, "alpha [deg]", "CL", "Krzywa sily nosnej CL(alpha)")
+    _style(ax, "alpha [deg]", "CL", "Lift curve CL(alpha)")
     return _to_png(fig)
 
 
 def polar_png(res) -> bytes:
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     ax.plot(res.CD, res.CL, "-o", color=_ACCENT, ms=3, lw=1.6)
-    _style(ax, "CD", "CL", "Biegunowa CL(CD)")
+    _style(ax, "CD", "CL", "Drag polar CL(CD)")
     return _to_png(fig)
 
 
@@ -48,7 +48,7 @@ def cm_alpha_png(res) -> bytes:
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     ax.plot(res.alpha_deg, res.Cm, "-o", color="#dc2626", ms=3, lw=1.6)
     ax.axhline(0, color="#9ca3af", lw=0.6)
-    _style(ax, "alpha [deg]", "Cm", "Moment pochylajacy Cm(alpha)")
+    _style(ax, "alpha [deg]", "Cm", "Pitching moment Cm(alpha)")
     return _to_png(fig)
 
 
@@ -57,7 +57,7 @@ def ld_png(res) -> bytes:
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     ld = np.where(res.CD > 1e-6, res.CL / res.CD, 0)
     ax.plot(res.alpha_deg, ld, "-o", color="#059669", ms=3, lw=1.6)
-    _style(ax, "alpha [deg]", "L/D", "Doskonalosc L/D(alpha)")
+    _style(ax, "alpha [deg]", "L/D", "Lift-to-drag L/D(alpha)")
     return _to_png(fig)
 
 
@@ -65,14 +65,14 @@ def polar2d_cl_png(pol) -> bytes:
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     ax.plot(pol.alpha, pol.cl, "-o", color=_ACCENT, ms=3, lw=1.6)
     ax.axhline(0, color="#9ca3af", lw=0.6)
-    _style(ax, "alpha [deg]", "Cl", f"Profil: Cl(alfa)  [{pol.method}]")
+    _style(ax, "alpha [deg]", "Cl", f"Airfoil: Cl(alpha)  [{pol.method}]")
     return _to_png(fig)
 
 
 def polar2d_clcd_png(pol) -> bytes:
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     ax.plot(pol.cd, pol.cl, "-o", color=_ACCENT, ms=3, lw=1.6)
-    _style(ax, "Cd", "Cl", "Profil: biegunowa Cl(Cd)")
+    _style(ax, "Cd", "Cl", "Airfoil: polar Cl(Cd)")
     return _to_png(fig)
 
 
@@ -81,11 +81,11 @@ def cp_png(pol) -> bytes:
     if pol.cp is not None and pol.cp_x is not None:
         ax.plot(pol.cp_x, pol.cp, "-", color="#dc2626", lw=1.3)
         ax.invert_yaxis()
-        _style(ax, "x/c", "Cp", f"Rozklad Cp @ {pol.cp_alpha:.0f} deg")
+        _style(ax, "x/c", "Cp", f"Cp distribution @ {pol.cp_alpha:.0f} deg")
     else:
-        ax.text(0.5, 0.5, "Cp dostepne tylko z XFoila", ha="center",
+        ax.text(0.5, 0.5, "Cp available only from XFoil", ha="center",
                 va="center", fontsize=9, color="#6b7280")
-        _style(ax, "x/c", "Cp", "Rozklad Cp")
+        _style(ax, "x/c", "Cp", "Cp distribution")
     return _to_png(fig)
 
 

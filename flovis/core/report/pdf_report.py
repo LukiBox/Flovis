@@ -88,32 +88,32 @@ def _data_table(res, ss):
 
 def _verdict_static_margin(sm):
     if 0.05 <= sm <= 0.20:
-        return _GREEN, "OK", "stateczny (zapas w zalecanym zakresie 5-20% MAC)"
+        return _GREEN, "OK", "stable (margin in the recommended 5-20% MAC range)"
     if 0.0 <= sm < 0.05:
-        return _YELLOW, "UWAGA", "maly zapas - wrazliwy na obciazenie tylu"
+        return _YELLOW, "CAUTION", "small margin - sensitive to rear loading"
     if sm > 0.20:
-        return _YELLOW, "UWAGA", "duzy zapas - bardzo stateczny, ale ospaly w sterowaniu"
-    return _RED, "ZLE", "niestateczny - przesun CG do przodu"
+        return _YELLOW, "CAUTION", "large margin - very stable but sluggish in control"
+    return _RED, "BAD", "unstable - move the CG forward"
 
 
 def _verdict_clmax(clmax):
     if clmax >= 1.1:
-        return _GREEN, "OK", "dobra nosnosc maksymalna"
+        return _GREEN, "OK", "good maximum lift"
     if clmax >= 0.9:
-        return _YELLOW, "UWAGA", "umiarkowane CL_max - wyzsza predkosc przeciagniecia"
-    return _RED, "ZLE", "niskie CL_max - duza predkosc minimalna"
+        return _YELLOW, "CAUTION", "moderate CL_max - higher stall speed"
+    return _RED, "BAD", "low CL_max - high minimum speed"
 
 
 def _verdict_ld(ld):
     if ld >= 15:
-        return _GREEN, "OK", "dobra doskonalosc aerodynamiczna"
+        return _GREEN, "OK", "good aerodynamic efficiency"
     if ld >= 9:
-        return _YELLOW, "UWAGA", "przecietna doskonalosc"
-    return _RED, "ZLE", "niska doskonalosc - duzy opor"
+        return _YELLOW, "CAUTION", "average efficiency"
+    return _RED, "BAD", "low efficiency - high drag"
 
 
 def _assessment_table(res, ss):
-    rows = [("Parametr", "Wartosc", "Ocena", "Komentarz")]
+    rows = [("Parameter", "Value", "Rating", "Comment")]
     styles = [("BACKGROUND", (0, 0), (-1, 0), _ACCENT),
               ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
               ("FONTSIZE", (0, 0), (-1, -1), 8.5),
@@ -122,7 +122,7 @@ def _assessment_table(res, ss):
               ("TOPPADDING", (0, 0), (-1, -1), 4),
               ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]
     items = [
-        ("Zapas statecznosci", f"{res.static_margin*100:.1f}% MAC",
+        ("Static margin", f"{res.static_margin*100:.1f}% MAC",
          _verdict_static_margin(res.static_margin)),
         ("CL max", f"{res.CL_max:.2f}", _verdict_clmax(res.CL_max)),
         ("(L/D) max", f"{res.LD_max:.1f}", _verdict_ld(res.LD_max)),
@@ -148,9 +148,9 @@ def _derivatives_table(res, ss):
     if "Cm_q" in ex:
         rows.append(("Cm_q", f"{ex['Cm_q']:.3f}"))
     rows += [
-        ("Punkt neutralny x_np", f"{res.neutral_point_x:.4f} m"),
-        ("Srodek ciezkosci x_cg", f"{res.cg_x:.4f} m"),
-        ("Zapas statecznosci", f"{res.static_margin*100:.1f}% MAC"),
+        ("Neutral point x_np", f"{res.neutral_point_x:.4f} m"),
+        ("Center of gravity x_cg", f"{res.cg_x:.4f} m"),
+        ("Static margin", f"{res.static_margin*100:.1f}% MAC"),
     ]
     return _kv_table(rows, ss)
 
@@ -159,8 +159,8 @@ def _footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(_MUTED)
-    canvas.drawString(18 * mm, 10 * mm, "Flovis - raport analizy aerodynamicznej")
-    canvas.drawRightString(192 * mm, 10 * mm, f"Strona {canvas.getPageNumber()}")
+    canvas.drawString(18 * mm, 10 * mm, "Flovis - aerodynamic analysis report")
+    canvas.drawRightString(192 * mm, 10 * mm, f"Page {canvas.getPageNumber()}")
     canvas.setStrokeColor(colors.HexColor("#e5e7eb"))
     canvas.line(18 * mm, 13 * mm, 192 * mm, 13 * mm)
     canvas.restoreState()
@@ -181,12 +181,12 @@ def build_report(res, output_path: str | Path, model=None,
     # ---------------- strona tytulowa ----------------
     story.append(Spacer(1, 30 * mm))
     story.append(Paragraph("Flovis", ss["FTitle"]))
-    story.append(Paragraph("Raport analizy aerodynamicznej", ss["FBig"]))
+    story.append(Paragraph("Aerodynamic analysis report", ss["FBig"]))
     story.append(Spacer(1, 6))
     story.append(HRFlowable(width="100%", thickness=1.5, color=_ACCENT))
     story.append(Spacer(1, 10))
     story.append(Paragraph(f"<b>{res.model_name}</b>", ss["FH2"]))
-    story.append(Paragraph(f"Metoda: {res.method} &nbsp;|&nbsp; "
+    story.append(Paragraph(f"Method: {res.method} &nbsp;|&nbsp; "
                            f"{datetime.now():%Y-%m-%d %H:%M}", ss["FSub"]))
     if thumbnail_png:
         story.append(Spacer(1, 6))
@@ -194,24 +194,24 @@ def build_report(res, output_path: str | Path, model=None,
     story.append(PageBreak())
 
     # ---------------- parametry ----------------
-    story.append(Paragraph("Parametry analizy", ss["FH2"]))
+    story.append(Paragraph("Analysis parameters", ss["FH2"]))
     rows = [
-        ("Metoda", res.method),
-        ("Predkosc", f"{res.velocity:.1f} m/s"),
-        ("Powierzchnia odniesienia", f"{res.reference_area:.4f} m2"),
-        ("Srednia cieciwa aerodynamiczna (MAC)", f"{res.mac:.4f} m"),
+        ("Method", res.method),
+        ("Velocity", f"{res.velocity:.1f} m/s"),
+        ("Reference area", f"{res.reference_area:.4f} m2"),
+        ("Mean aerodynamic chord (MAC)", f"{res.mac:.4f} m"),
     ]
     if model is not None:
-        rows.insert(1, ("Uklad", getattr(model.layout, "value", str(model.layout))))
-        rows.append(("Masa", f"{model.mass_kg:.2f} kg"))
+        rows.insert(1, ("Layout", getattr(model.layout, "value", str(model.layout))))
+        rows.append(("Mass", f"{model.mass_kg:.2f} kg"))
     story.append(_kv_table(rows, ss))
 
     # ---------------- ocena R/Z/Z ----------------
-    story.append(Paragraph("Ocena kluczowych parametrow", ss["FH2"]))
+    story.append(Paragraph("Key parameters rating", ss["FH2"]))
     story.append(_assessment_table(res, ss))
 
     # ---------------- wykresy bieguna 3D ----------------
-    story.append(Paragraph("Bieguny modelu (3D)", ss["FH2"]))
+    story.append(Paragraph("Model polars (3D)", ss["FH2"]))
     grid = Table([
         [_img(charts.cl_alpha_png(res)), _img(charts.polar_png(res))],
         [_img(charts.cm_alpha_png(res)), _img(charts.ld_png(res))],
@@ -222,15 +222,15 @@ def build_report(res, output_path: str | Path, model=None,
 
     # ---------------- statecznosc / pochodne ----------------
     story.append(PageBreak())
-    story.append(Paragraph("Statecznosc podluzna i pochodne", ss["FH2"]))
+    story.append(Paragraph("Longitudinal stability and derivatives", ss["FH2"]))
     story.append(_derivatives_table(res, ss))
 
     # ---------------- profil + bieguny 2D ----------------
     if airfoil is not None:
-        story.append(Paragraph("Profil nosny", ss["FH2"]))
+        story.append(Paragraph("Airfoil", ss["FH2"]))
         story.append(_img(charts.airfoil_png(airfoil), width=150 * mm))
     if polar2d is not None:
-        story.append(Paragraph("Bieguny profilu (2D)", ss["FH2"]))
+        story.append(Paragraph("Airfoil polars (2D)", ss["FH2"]))
         g2 = Table([[_img(charts.polar2d_cl_png(polar2d)),
                      _img(charts.polar2d_clcd_png(polar2d))],
                     [_img(charts.cp_png(polar2d)), ""]],
@@ -239,17 +239,17 @@ def build_report(res, output_path: str | Path, model=None,
                                 ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
         story.append(g2)
         story.append(Paragraph(
-            f"Cl_max = {polar2d.cl_max:.2f} przy {polar2d.alpha_stall:.1f} deg; "
-            f"(Cl/Cd)_max = {polar2d.ld_max:.0f}; metoda: {polar2d.method}.",
+            f"Cl_max = {polar2d.cl_max:.2f} at {polar2d.alpha_stall:.1f} deg; "
+            f"(Cl/Cd)_max = {polar2d.ld_max:.0f}; method: {polar2d.method}.",
             ss["FBody"]))
 
     # ---------------- dane surowe ----------------
     story.append(PageBreak())
-    story.append(Paragraph("Dane surowe (biegun 3D)", ss["FH2"]))
+    story.append(Paragraph("Raw data (3D polar)", ss["FH2"]))
     story.append(_data_table(res, ss))
 
     # ---------------- interpretacja AI ----------------
-    story.append(Paragraph("Interpretacja (AI)", ss["FH2"]))
+    story.append(Paragraph("Interpretation (AI)", ss["FH2"]))
     if ai_text:
         for para in ai_text.split("\n"):
             if para.strip():
@@ -257,8 +257,8 @@ def build_report(res, output_path: str | Path, model=None,
                 story.append(Spacer(1, 4))
     else:
         story.append(Paragraph(
-            "<i>Interpretacja AI niedostepna (sekcja opcjonalna). Uruchom Ollame "
-            "z modelem qwen3:30b-a3b, aby dodac opis slowny.</i>", ss["FBody"]))
+            "<i>AI interpretation unavailable (optional section). Run Ollama "
+            "with the qwen3:30b-a3b model to add a written description.</i>", ss["FBody"]))
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     return output_path

@@ -1,7 +1,5 @@
-"""Zakladka: Raport - interpretacja AI i eksport PDF."""
+"""Tab: Report - AI interpretation and PDF export."""
 from __future__ import annotations
-
-from pathlib import Path
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                                QPushButton, QTextEdit, QLabel, QComboBox,
@@ -11,6 +9,7 @@ from PySide6.QtGui import QTextCursor
 
 from ...core.ai import ollama_client
 from ...core.report import build_report
+from ...core.i18n import t
 
 
 class _AIWorker(QThread):
@@ -51,39 +50,39 @@ class ReportTab(QWidget):
         bar = QHBoxLayout()
         self.model_cb = QComboBox()
         self._refresh_models()
-        bar.addWidget(QLabel("Model AI:"))
+        bar.addWidget(QLabel(t("AI model:")))
         bar.addWidget(self.model_cb, 1)
-        b_refresh = QPushButton("Odswiez modele"); b_refresh.setProperty("flat", True)
+        b_refresh = QPushButton(t("Refresh models")); b_refresh.setProperty("flat", True)
         b_refresh.clicked.connect(self._refresh_models)
         bar.addWidget(b_refresh)
         root.addLayout(bar)
 
         bar2 = QHBoxLayout()
-        bar2.addWidget(QLabel("Rodzaj analizy:"))
+        bar2.addWidget(QLabel(t("Analysis type:")))
         self.preset_cb = QComboBox()
         for key, (label, _) in ollama_client.PRESETS.items():
-            self.preset_cb.addItem(label, key)
+            self.preset_cb.addItem(t(label), key)
         bar2.addWidget(self.preset_cb, 1)
         root.addLayout(bar2)
 
-        self.b_ai = QPushButton("Generuj interpretacje AI")
+        self.b_ai = QPushButton(t("Generate AI interpretation"))
         self.b_ai.clicked.connect(self._run_ai)
         root.addWidget(self.b_ai)
         self.ai_status = QLabel(""); self.ai_status.setObjectName("hint")
         self.ai_status.setWordWrap(True)
         root.addWidget(self.ai_status)
 
-        box = QGroupBox("Interpretacja slowna")
+        box = QGroupBox(t("Written interpretation"))
         bl = QVBoxLayout(box)
         self.text = QTextEdit()
         self.text.setPlaceholderText(
-            "Tu pojawi sie interpretacja wynikow z modelu Ollama.\n"
-            "Mozesz tez wpisac/poprawic tekst recznie przed eksportem.")
+            t("The interpretation from the Ollama model will appear here.\n"
+              "You can also type/edit the text manually before export."))
         bl.addWidget(self.text)
         root.addWidget(box, 1)
 
         exp = QHBoxLayout()
-        b_pdf = QPushButton("Eksportuj raport PDF")
+        b_pdf = QPushButton(t("Export PDF report"))
         b_pdf.clicked.connect(self._export_pdf)
         exp.addStretch(); exp.addWidget(b_pdf)
         root.addLayout(exp)
@@ -110,30 +109,29 @@ class ReportTab(QWidget):
     def _run_ai(self):
         payload = self._payload()
         if payload is None:
-            QMessageBox.warning(self, "Brak wynikow",
-                                "Najpierw uruchom analize.")
+            QMessageBox.warning(self, t("No results"),
+                                t("Run an analysis first."))
             return
         if not ollama_client.is_available():
             QMessageBox.information(
-                self, "Ollama offline",
-                "Nie wykryto Ollama na localhost:11434.\n"
-                "Uruchom 'ollama serve', a nastepnie sprobuj ponownie.")
+                self, t("Ollama offline"),
+                t("Ollama was not found at localhost:11434.\n"
+                  "Start 'ollama serve' and try again."))
             return
         model = self.model_cb.currentText().split(" ")[0]
         if not ollama_client.model_available(model):
-            QMessageBox.information(self, "Brak modelu",
+            QMessageBox.information(self, t("Model missing"),
                                     ollama_client.missing_model_hint(model))
             return
         self.text.clear(); self.ai_text = ""
         self._think_chars = 0
         self._got_content = False
-        self.b_ai.setEnabled(False); self.b_ai.setText("Generowanie...")
+        self.b_ai.setEnabled(False); self.b_ai.setText(t("Generating..."))
         self.ai_status.setStyleSheet("color:#2563eb;")
         self.ai_status.setText(
-            "Model AI analizuje dane... Duze modele (np. qwen3:30b) moga myslec "
-            "nawet ~1-2 min zanim zaczna pisac. Prosze czekac.")
-        self.state.status("Generowanie interpretacji AI...")
-        # licznik czasu, zeby bylo widac ze aplikacja pracuje
+            t("The AI model is analyzing the data... Large models (e.g. qwen3:30b) "
+              "may think for ~1-2 min before writing. Please wait."))
+        self.state.status(t("Generating AI interpretation..."))
         import time
         from PySide6.QtCore import QTimer
         self._ai_t0 = time.time()
@@ -152,9 +150,11 @@ class ReportTab(QWidget):
         import time
         s = int(time.time() - self._ai_t0)
         if not self._got_content:
-            extra = f" (analiza: {self._think_chars} znakow rozumowania)" if self._think_chars else ""
+            extra = (t(" (reasoning: {} chars)").format(self._think_chars)
+                     if self._think_chars else "")
             self.ai_status.setText(
-                f"Model AI pracuje... {s} s{extra}. Odpowiedz pojawi sie ponizej.")
+                t("The AI model is working... {s} s{extra}. "
+                  "The answer will appear below.").format(s=s, extra=extra))
 
     def _on_thinking(self, part):
         self._think_chars += len(part)
@@ -163,38 +163,38 @@ class ReportTab(QWidget):
         if not self._got_content:
             self._got_content = True
             self.ai_status.setStyleSheet("color:#059669;")
-            self.ai_status.setText("Model pisze odpowiedz...")
+            self.ai_status.setText(t("The model is writing the answer..."))
         self.text.moveCursor(QTextCursor.MoveOperation.End)
         self.text.insertPlainText(part)
 
     def _ai_done(self, text):
         self.ai_text = text
         self._ai_timer.stop()
-        self.b_ai.setEnabled(True); self.b_ai.setText("Generuj interpretacje AI")
+        self.b_ai.setEnabled(True); self.b_ai.setText(t("Generate AI interpretation"))
         if not text.strip():
             self.ai_status.setStyleSheet("color:#d97706;")
             self.ai_status.setText(
-                "Model nie zwrocil tekstu. Sprobuj innego modelu (lista wyzej) "
-                "lub presetu 'Krotka ocena'.")
+                t("The model returned no text. Try another model (list above) "
+                  "or the 'Short assessment' preset."))
         else:
             self.ai_status.setStyleSheet("color:#059669;")
-            self.ai_status.setText("Interpretacja gotowa. Mozesz ja edytowac przed eksportem.")
-        self.state.status("Interpretacja gotowa.")
+            self.ai_status.setText(t("Interpretation ready. You can edit it before export."))
+        self.state.status(t("Interpretation ready."))
 
     def _ai_failed(self, msg):
         self._ai_timer.stop()
-        self.b_ai.setEnabled(True); self.b_ai.setText("Generuj interpretacje AI")
+        self.b_ai.setEnabled(True); self.b_ai.setText(t("Generate AI interpretation"))
         self.ai_status.setStyleSheet("color:#dc2626;")
-        self.ai_status.setText("Blad generowania AI.")
-        QMessageBox.critical(self, "Blad AI", msg)
+        self.ai_status.setText(t("AI generation error."))
+        QMessageBox.critical(self, t("AI error"), msg)
 
     def _export_pdf(self):
         res = self.state.current_result
         if res is None:
-            QMessageBox.warning(self, "Brak wynikow", "Najpierw uruchom analize.")
+            QMessageBox.warning(self, t("No results"), t("Run an analysis first."))
             return
         fn, _ = QFileDialog.getSaveFileName(
-            self, "Zapisz raport", f"Flovis_{res.model_name}.pdf",
+            self, t("Save report"), f"Flovis_{res.model_name}.pdf",
             "PDF (*.pdf)")
         if not fn:
             return
@@ -204,12 +204,13 @@ class ReportTab(QWidget):
                          airfoil=self.state.current_airfoil,
                          polar2d=self.state.current_polar2d,
                          thumbnail_png=self._thumbnail())
-            QMessageBox.information(self, "Gotowe", f"Raport zapisany:\n{fn}")
+            QMessageBox.information(self, t("Done"),
+                                    t("Report saved:\n{}").format(fn))
         except Exception as e:  # noqa: BLE001
-            QMessageBox.critical(self, "Blad eksportu", str(e))
+            QMessageBox.critical(self, t("Export error"), str(e))
 
     def _thumbnail(self):
-        """Best-effort miniatura 3D do strony tytulowej (pomijana, gdy brak VTK)."""
+        """Best-effort 3D thumbnail for the title page (skipped if VTK missing)."""
         if self.state.current_model is None:
             return None
         try:

@@ -1,31 +1,33 @@
 # Changelog
 
-Wszystkie istotne zmiany w projekcie Flovis.
+All notable changes to Flovis.
 
 ## [1.0.0] — 2026-07-01
 
-Pierwsze pełne wydanie. Wszystkie główne ścieżki działają end-to-end.
+First full release. All main paths work end-to-end.
 
-### Dodane
-- **Interaktywny edytor profili** (pyqtgraph): przeciąganie punktów, wstaw/usuń,
-  undo/redo, snap do cięciwy, repanelizacja kosinusowa, walidacja geometrii.
-- **Bieguny profilu 2D** — wrapper XFoil (subprocess) z rozkładem Cp oraz
-  fallback NeuralFoil.
-- **Solver VLM** z rzeczywistymi profilami i sprzężeniem VLM↔XFoil (teoria pasków),
-  pełne pochodne stateczności, punkt neutralny.
-- **Solver AVL** — generacja pliku `.avl`, uruchomienie binarki, parsowanie
-  sił i pochodnych stateczności.
-- **Metoda panelowa 3D dla STEP** (source-doublet, warunek Kutty) — wektoryzowana,
-  z ograniczeniem liczby paneli i odpornym siatkowaniem (gmsh).
-- **Widok 3D** (PyVista) z kolorowym, symetrycznym rozkładem ciśnień, CG i
-  punktem neutralnym.
-- **Raport PDF** — wielostronicowy: ocena R/Ż/Z, bieguny, pochodne stateczności,
-  rozkład Cp, interpretacja AI, numeracja stron.
-- **AI (Ollama)** — presety promptów, wykrywanie braku modelu, pełny kontekst.
-- **Format projektu `.flovis`** (zapis/odczyt) + menu Plik + onboarding.
-- Jasny, minimalistyczny motyw (wymuszany niezależnie od trybu ciemnego systemu).
-- 28 testów pytest, spec PyInstaller.
+### Added
+- **Bilingual UI** — English by default, one-click switch to Polish (remembered
+  across runs). The AI answers in the selected language.
+- **Interactive airfoil editor** (pyqtgraph): drag points, insert/delete,
+  undo/redo, snap to chord, cosine repaneling, live geometry validation.
+- **2D airfoil polars** — XFoil (subprocess) with Cp distribution and a
+  NeuralFoil fallback.
+- **VLM solver** with real airfoils and VLM↔XFoil coupling (strip theory),
+  full stability derivatives and neutral point.
+- **AVL solver** — generates the `.avl` file, runs the binary, parses forces
+  and stability derivatives.
+- **3D panel method for STEP** (source-doublet, Kutta condition) — vectorized,
+  with a bounded panel count and robust meshing (gmsh).
+- **3D view** (PyVista) with a smooth, symmetric pressure distribution, CG and
+  neutral point.
+- **PDF report** — multi-page: R/Y/G rating, polars, stability derivatives,
+  Cp distribution, AI interpretation, page numbers.
+- **AI (Ollama)** — prompt presets, missing-model detection, full context.
+- **`.flovis` project format** (save/load) + File menu + onboarding.
+- Light, minimalist theme (forced regardless of the OS dark mode).
+- 28 pytest tests, PyInstaller spec.
 
-### Uwagi
-- Metoda panelowa STEP ma charakter poglądowy (solver niskiego rzędu); do
-  wyników ilościowych zalecane VLM/AVL.
+### Notes
+- The STEP panel method is qualitative (low-order solver); for quantitative
+  results prefer VLM/AVL.

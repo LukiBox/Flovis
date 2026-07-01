@@ -1,4 +1,4 @@
-"""Zakladka: Analiza - uruchomienie solvera i podglad wynikow."""
+"""Tab: Analysis - run a solver and preview the results."""
 from __future__ import annotations
 
 import numpy as np
@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QGroupBox,
 from PySide6.QtCore import QThread, Signal
 
 from ...core.solvers import analyze, panel_step
+from ...core.i18n import t
 from ..widgets.mpl_canvas import MplCanvas
 
 
@@ -30,7 +31,7 @@ class _Worker(QThread):
 
 
 class _StepWorker(QThread):
-    """Analiza STEP w tle - nie blokuje UI (gmsh + solver panelowy trwaja)."""
+    """STEP analysis in the background - keeps the UI responsive."""
     progress = Signal(str)
     done = Signal(object)
     failed = Signal(str)
@@ -41,7 +42,7 @@ class _StepWorker(QThread):
 
     def run(self):
         try:
-            self.progress.emit("Wczytywanie i siatkowanie geometrii STEP...")
+            self.progress.emit(t("Loading and meshing STEP geometry..."))
             res = panel_step.analyze_step(self.path, velocity=self.velocity)
             self.done.emit(res)
         except Exception as e:  # noqa: BLE001
@@ -58,33 +59,33 @@ class AnalysisTab(QWidget):
         root = QHBoxLayout(self)
         left = QVBoxLayout()
 
-        cfg = QGroupBox("Konfiguracja analizy")
+        cfg = QGroupBox(t("Analysis setup"))
         f = QFormLayout(cfg)
         self.velocity = QDoubleSpinBox(); self.velocity.setRange(2, 80)
         self.velocity.setValue(15); self.velocity.setSuffix(" m/s")
-        f.addRow("Predkosc", self.velocity)
+        f.addRow(t("Velocity"), self.velocity)
         self.solver = QComboBox()
-        self.solver.addItem("Automatyczny (VLM/analityczny)", "auto")
+        self.solver.addItem(t("Automatic (VLM/analytic)"), "auto")
         self.solver.addItem("VLM (AeroSandbox)", "aerosandbox")
-        self.solver.addItem("AVL (tryb dokladny)", "avl")
-        self.solver.addItem("Analityczny", "analytic")
-        f.addRow("Solver", self.solver)
+        self.solver.addItem(t("AVL (accurate mode)"), "avl")
+        self.solver.addItem(t("Analytic"), "analytic")
+        f.addRow(t("Solver"), self.solver)
         left.addWidget(cfg)
 
-        b_run = QPushButton("Uruchom analize szablonu")
+        b_run = QPushButton(t("Run template analysis"))
         b_run.clicked.connect(self._run)
         left.addWidget(b_run)
 
-        step = QGroupBox("Analiza dokladna (.stp)")
+        step = QGroupBox(t("Exact analysis (.stp)"))
         sf = QVBoxLayout(step)
-        self.b_step = QPushButton("Wczytaj STEP i analizuj")
+        self.b_step = QPushButton(t("Load STEP and analyze"))
         self.b_step.setProperty("flat", True)
         self.b_step.clicked.connect(self._run_step)
         sf.addWidget(self.b_step)
         deps = panel_step.dependencies_available()
         ok = deps.get("gmsh", False)
-        status = "gotowe (gmsh)" if ok else "BRAK gmsh - zainstaluj: pip install gmsh"
-        lbl = QLabel(f"Silnik STEP: {status}"); lbl.setObjectName("hint")
+        status = t("ready (gmsh)") if ok else t("MISSING gmsh - install: pip install gmsh")
+        lbl = QLabel(t("STEP engine: {}").format(status)); lbl.setObjectName("hint")
         lbl.setWordWrap(True)
         sf.addWidget(lbl)
         self.step_status = QLabel(""); self.step_status.setObjectName("hint")
@@ -92,14 +93,14 @@ class AnalysisTab(QWidget):
         sf.addWidget(self.step_status)
         left.addWidget(step)
 
-        self.metrics = QGroupBox("Wyniki")
+        self.metrics = QGroupBox(t("Results"))
         self.mlay = QGridLayout(self.metrics)
         self._metric_labels = {}
         for i, (key, name) in enumerate([
             ("CL_alpha", "CL_alpha [/rad]"), ("Cm_alpha", "Cm_alpha [/rad]"),
             ("CL_max", "CL max"), ("LD_max", "(L/D) max"),
-            ("static_margin", "Zapas statecz. [%MAC]"),
-            ("neutral_point_x", "Pkt neutralny [m]")]):
+            ("static_margin", t("Static margin [%MAC]")),
+            ("neutral_point_x", t("Neutral point [m]"))]):
             self.mlay.addWidget(QLabel(name), i, 0)
             v = QLabel("-"); v.setObjectName("metric")
             self.mlay.addWidget(v, i, 1)
@@ -107,7 +108,6 @@ class AnalysisTab(QWidget):
         left.addWidget(self.metrics)
         left.addStretch()
 
-        # prawy: 4 wykresy
         right = QGridLayout()
         self.canvases = {}
         for i, key in enumerate(["cl", "polar", "cm", "ld"]):
@@ -122,32 +122,31 @@ class AnalysisTab(QWidget):
     def _run(self):
         model = self.state.current_model
         if model is None:
-            QMessageBox.warning(self, "Brak modelu",
-                                "Najpierw skonfiguruj model w zakladce Szablony.")
+            QMessageBox.warning(self, t("No model"),
+                                t("Set up a model in the Templates tab first."))
             return
-        self.state.status("Analiza w toku...")
+        self.state.status(t("Analysis running..."))
         self.worker = _Worker(model, self.velocity.value(),
                               self.solver.currentData())
         self.worker.done.connect(self._show)
         self.worker.failed.connect(
-            lambda m: QMessageBox.critical(self, "Blad analizy", m))
+            lambda m: QMessageBox.critical(self, t("Analysis error"), m))
         self.worker.start()
 
     def _run_step(self):
         if not panel_step.dependencies_available().get("gmsh", False):
             QMessageBox.warning(
-                self, "Brak silnika STEP",
-                "Analiza STEP wymaga biblioteki gmsh.\n"
-                "Zainstaluj:  pip install gmsh")
+                self, t("STEP engine missing"),
+                t("STEP analysis requires gmsh.\nInstall:  pip install gmsh"))
             return
-        fn, _ = QFileDialog.getOpenFileName(self, "Wczytaj model STEP", "",
+        fn, _ = QFileDialog.getOpenFileName(self, t("Load STEP model"), "",
                                             "STEP (*.stp *.step)")
         if not fn:
             return
         self.b_step.setEnabled(False)
-        self.b_step.setText("Analiza STEP w toku...")
-        self.step_status.setText("Wczytywanie geometrii...")
-        self.state.status("Analiza STEP: wczytywanie i siatkowanie...")
+        self.b_step.setText(t("STEP analysis running..."))
+        self.step_status.setText(t("Loading geometry..."))
+        self.state.status(t("STEP analysis: loading and meshing..."))
         self.step_worker = _StepWorker(fn, self.velocity.value())
         self.step_worker.progress.connect(self.step_status.setText)
         self.step_worker.done.connect(self._step_done)
@@ -156,14 +155,14 @@ class AnalysisTab(QWidget):
 
     def _step_done(self, res):
         self.b_step.setEnabled(True)
-        self.b_step.setText("Wczytaj STEP i analizuj")
+        self.b_step.setText(t("Load STEP and analyze"))
         n = res.extras.get("n_panels", "?")
         pf = res.extras.get("planform", {})
         self.step_status.setText(
-            f"Gotowe: {n} paneli. Obrys: rozp. {pf.get('span','?')} m, "
-            f"cieciwa {pf.get('root_chord','?')} m, profil {pf.get('naca','?')}.")
+            t("Done: {n} panels. Planform: span {s} m, chord {c} m, airfoil {a}.")
+            .format(n=n, s=pf.get('span', '?'), c=pf.get('root_chord', '?'),
+                    a=pf.get('naca', '?')))
         self._show(res)
-        # automatycznie pokaz geometrie STEP z rozkladem Cp w widoku 3D
         win = getattr(self.state, "window", None)
         shown_3d = False
         if win is not None and hasattr(win, "model3d_tab") and hasattr(win, "tabs"):
@@ -173,24 +172,25 @@ class AnalysisTab(QWidget):
                 shown_3d = True
             except Exception:  # noqa: BLE001
                 shown_3d = False
-        tail = ("Geometria STEP z rozkladem Cp jest juz w zakladce Model 3D."
+        tail = (t("STEP geometry with the Cp field is now in the 3D Model tab.")
                 if shown_3d else
-                "Pole Cp obejrzysz w zakladce Model 3D (przycisk 'Nalozy Cp').")
+                t("View the Cp field in the 3D Model tab ('Apply Cp' button)."))
         QMessageBox.information(
-            self, "Analiza STEP zakonczona",
-            f"Metoda: {res.method}\nPaneli STEP: {n}\n"
-            f"CL_alpha = {res.CL_alpha:.2f} /rad\n"
-            f"(L/D)_max = {res.LD_max:.1f}\n\n" + tail)
+            self, t("STEP analysis finished"),
+            t("Method: {m}\nSTEP panels: {n}\nCL_alpha = {cla} /rad\n"
+              "(L/D)_max = {ld}\n\n").format(
+                m=res.method, n=n, cla=f"{res.CL_alpha:.2f}",
+                ld=f"{res.LD_max:.1f}") + tail)
 
     def _step_failed(self, msg):
         self.b_step.setEnabled(True)
-        self.b_step.setText("Wczytaj STEP i analizuj")
-        self.step_status.setText("Blad analizy STEP.")
-        self.state.status("Analiza STEP nie powiodla sie.")
-        QMessageBox.critical(self, "Blad analizy STEP", msg)
+        self.b_step.setText(t("Load STEP and analyze"))
+        self.step_status.setText(t("STEP analysis error."))
+        self.state.status(t("STEP analysis failed."))
+        QMessageBox.critical(self, t("STEP analysis error"), msg)
 
     def show_result(self, res):
-        """Wyswietla wynik z zewnatrz (np. po wczytaniu projektu)."""
+        """Show a result from outside (e.g. after loading a project)."""
         self._show(res)
 
     def _show(self, res):
@@ -205,18 +205,18 @@ class AnalysisTab(QWidget):
 
         plots = {
             "cl": (res.alpha_deg, res.CL, "alpha [deg]", "CL", "CL(alpha)", "#2563eb"),
-            "polar": (res.CD, res.CL, "CD", "CL", "Biegunowa", "#2563eb"),
+            "polar": (res.CD, res.CL, "CD", "CL", t("Polar"), "#2563eb"),
             "cm": (res.alpha_deg, res.Cm, "alpha [deg]", "Cm", "Cm(alpha)", "#dc2626"),
             "ld": (res.alpha_deg, np.where(res.CD > 1e-6, res.CL / res.CD, 0),
-                   "alpha [deg]", "L/D", "Doskonalosc", "#059669"),
+                   "alpha [deg]", "L/D", t("Efficiency"), "#059669"),
         }
-        for key, (x, y, xl, yl, t, col) in plots.items():
+        for key, (x, y, xl, yl, title, col) in plots.items():
             c = self.canvases[key]; c.clear()
             c.ax.plot(x, y, "-o", color=col, ms=3, lw=1.4)
             c.ax.set_xlabel(xl, fontsize=8); c.ax.set_ylabel(yl, fontsize=8)
-            c.ax.set_title(t, fontsize=9, weight="bold")
+            c.ax.set_title(title, fontsize=9, weight="bold")
             c.ax.grid(True, color="#e5e7eb", lw=0.5)
             for s in ("top", "right"):
                 c.ax.spines[s].set_visible(False)
             c.fig.tight_layout(); c.draw()
-        self.state.status(f"Analiza gotowa ({res.method}).")
+        self.state.status(t("Analysis ready ({}).").format(res.method))

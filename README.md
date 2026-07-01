@@ -2,208 +2,209 @@
 
 # ✈️ Flovis
 
-### Aerodynamika modeli latających — prosto, wizualnie, offline
+### Aerodynamics of flying models — simple, visual, offline
 
-**Analizuj profile i skrzydła jak w XFLR5, ale bez wchodzenia w matematykę.**
-Flovis prowadzi Cię za rękę: wybierasz układ, klikasz „analizuj", a dostajesz
-bieguny, stateczność, kolorowy rozkład ciśnień w 3D i gotowy raport PDF —
-z opisem słownym napisanym przez lokalną sztuczną inteligencję.
+**Analyze airfoils and wings like in XFLR5, but without wrestling with the math.**
+Flovis guides you by the hand: pick a layout, click "analyze", and you get polars,
+stability, a colorful 3D pressure map and a ready-made PDF report — complete with a
+plain-language write-up produced by a **local** AI.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![PySide6](https://img.shields.io/badge/UI-PySide6%20(Qt6)-41CD52?logo=qt&logoColor=white)
-![Offline](https://img.shields.io/badge/Dzia%C5%82a-100%25%20offline-2563EB)
-![License](https://img.shields.io/badge/Licencja-MIT-green)
-![Tests](https://img.shields.io/badge/testy-28%20passed-success)
+![Offline](https://img.shields.io/badge/Runs-100%25%20offline-2563EB)
+![i18n](https://img.shields.io/badge/UI-English%20%2F%20Polski-2563EB)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Tests](https://img.shields.io/badge/tests-28%20passed-success)
 
 </div>
 
 ---
 
-## 🎯 Dla kogo jest Flovis?
+## 🎯 Who is Flovis for?
 
-Dla **pasjonatów, modelarzy i konstruktorów-amatorów**, którzy chcą wiedzieć,
-*czy ich model poleci* — bez dyplomu z aerodynamiki i bez walki z surowym
-XFoilem czy AVL z linii poleceń.
+For **hobbyists, RC modelers and amateur designers** who want to know
+*whether their model will actually fly* — without an aerodynamics degree and
+without fighting raw XFoil or AVL on the command line.
 
-> Zawodowe narzędzia (XFLR5, XFoil, AVL) są potężne, ale onieśmielają.
-> Flovis chowa całą matematykę za czystym, minimalistycznym interfejsem
-> i **domyślnie podpowiada bezpieczne wartości**. Wszystkie najważniejsze
-> akcje są w 2–3 kliknięciach.
+> Professional tools (XFLR5, XFoil, AVL) are powerful but intimidating.
+> Flovis hides the math behind a clean, minimalist interface and
+> **suggests safe defaults**. Every key action is 2–3 clicks away.
 
-Pod maską pracują jednak **prawdziwe silniki numeryczne** — te same, których
-używają profesjonaliści.
+Under the hood, though, it runs **real numerical engines** — the same ones the
+pros use.
 
 ---
 
-## ✨ Co potrafi
+## ✨ Features
 
-| | Funkcja |
+| | Feature |
 |---|---|
-| 🛩️ | **6 parametrycznych układów** — dolnopłat, górnopłat, układ z belkami, silnik pchający, kaczka, latające skrzydło. Edytujesz na żywo, widzisz rzut z góry. |
-| ✏️ | **Interaktywny edytor profili** — przeciągasz punkty myszą, wstawiasz/usuwasz, cofasz (undo/redo), repanelizacja kosinusowa, wygładzanie, walidacja geometrii na żywo. |
-| 📈 | **Bieguny profilu 2D** — solidny **XFoil** (w komplecie) z pełnym rozkładem `Cp`, oraz **NeuralFoil** jako błyskawiczny fallback. Cl(α), Cl(Cd), Cl_max, α_stall. |
-| 🌬️ | **Solvery 3D** — **VLM** (AeroSandbox) z realnymi profilami i sprzężeniem z XFoil, **AVL** (tryb dokładny, w komplecie) oraz estymator analityczny „od ręki". |
-| 🧊 | **Analiza STEP (.stp)** — wczytaj geometrię z CAD, a Flovis pokaże ją w 3D z **kolorowym rozkładem ciśnień**. |
-| 🎨 | **Widok 3D** — bryła modelu z mapą ciśnień (niebieski = ssanie, czerwony = spiętrzenie), CG i punkt neutralny, obrót/zoom. |
-| 📄 | **Raport PDF** — wielostronicowy: ocena „czerwony/żółty/zielony", bieguny, pochodne stateczności, rozkład Cp i **interpretacja słowna z AI**. |
-| 🤖 | **Lokalna AI (Ollama)** — model `qwen3:30b-a3b` tłumaczy wyniki prostym językiem. W pełni offline, prywatnie, na Twoim komputerze. |
-| 💾 | **Format projektu `.flovis`** — zapisz cały stan pracy (model, profil, ustawienia, wyniki) i wróć do niego później. |
+| 🛩️ | **6 parametric layouts** — low wing, high wing, twin boom, pusher, canard, flying wing. Edit live, see the top-view planform. |
+| ✏️ | **Interactive airfoil editor** — drag points with the mouse, insert/delete, undo/redo, cosine repaneling, smoothing, live geometry validation. |
+| 📈 | **2D airfoil polars** — bundled **XFoil** with full `Cp` distribution, plus **NeuralFoil** as a lightning-fast fallback. Cl(α), Cl(Cd), Cl_max, α_stall. |
+| 🌬️ | **3D solvers** — **VLM** (AeroSandbox) with real airfoils and XFoil coupling, **AVL** (accurate mode, bundled), and an instant analytic estimator. |
+| 🧊 | **STEP (.stp) analysis** — load CAD geometry and Flovis shows it in 3D with a **colored pressure distribution**. |
+| 🎨 | **3D view** — model body with a pressure map (blue = suction, red = stagnation), CG and neutral point, rotate/zoom. |
+| 📄 | **PDF report** — multi-page: red/yellow/green rating, polars, stability derivatives, Cp distribution and an **AI written interpretation**. |
+| 🤖 | **Local AI (Ollama)** — the `qwen3:30b-a3b` model explains the results in plain language. Fully offline and private. |
+| 🌍 | **Bilingual UI** — English by default, one click to switch to Polish (and back). Remembered across runs. |
+| 💾 | **`.flovis` project format** — save the whole working state (model, airfoil, settings, results) and come back later. |
 
-> 🔒 **Wszystko działa offline.** Nic nie wychodzi do internetu — nawet AI liczy się lokalnie.
+> 🔒 **Everything runs offline.** Nothing leaves your machine — even the AI runs locally.
 
 ---
 
-## 🖼️ Zrzuty ekranu
+## 🖼️ Screenshots
 
-> 📸 Wrzuć swoje zrzuty do `docs/screenshots/` (np. `templates.png`,
-> `pressure3d.png`), a następnie odkomentuj poniższą tabelę — obrazy pojawią się
-> na tej stronie.
+> 📸 Drop your screenshots into `docs/screenshots/` (e.g. `templates.png`,
+> `pressure3d.png`) and uncomment the table below to show them here.
 
 <!--
-| Szablony i geometria | Rozkład ciśnień 3D |
+| Templates & geometry | 3D pressure distribution |
 |---|---|
-| ![Szablony](docs/screenshots/templates.png) | ![Cisnienie 3D](docs/screenshots/pressure3d.png) |
+| ![Templates](docs/screenshots/templates.png) | ![Pressure 3D](docs/screenshots/pressure3d.png) |
 -->
 
 ---
 
-## 🚀 Szybki start
+## 🚀 Quick start
 
-> ⚠️ **Ważne (Windows z polskimi znakami w nazwie użytkownika, np. `Łukasz`):**
-> biblioteka **casadi** (silnik AeroSandbox) nie ładuje swoich wtyczek ze ścieżki
-> zawierającej znaki spoza ASCII. Dlatego **środowisko wirtualne musi leżeć na
-> ścieżce ASCII**, np. `C:\Users\Public\flovis-venv`. Sam projekt może być gdziekolwiek.
+> ⚠️ **Important (Windows with non-ASCII characters in the username, e.g. `Łukasz`):**
+> the **casadi** library (AeroSandbox's engine) cannot load its plugins from a path
+> containing such characters. So the **virtual environment must live on an ASCII
+> path**, e.g. `C:\Users\Public\flovis-venv`. The project itself can be anywhere.
 
 ```powershell
-# 1. Sklonuj repozytorium
-git clone https://github.com/<twoj-user>/Flovis.git
+# 1. Clone the repository
+git clone https://github.com/<your-user>/Flovis.git
 cd Flovis
 
-# 2. Środowisko wirtualne na ścieżce ASCII (ważne!)
+# 2. Virtual environment on an ASCII path (important!)
 python -m venv C:\Users\Public\flovis-venv
 C:\Users\Public\flovis-venv\Scripts\Activate.ps1
 
-# 3. Zależności
+# 3. Dependencies
 pip install -r requirements.txt
 
-# 4. Start
+# 4. Run
 python -m flovis.app
 ```
 
-### 🤖 Uruchomienie AI (opcjonalne)
+### 🤖 Enabling the AI (optional)
 
-Zainstaluj [Ollama](https://ollama.com), a następnie:
+Install [Ollama](https://ollama.com), then:
 
 ```powershell
 ollama pull qwen3:30b-a3b
 ollama serve
 ```
 
-Flovis sam wykryje dostępne modele. **Raport wygenerujesz też bez AI** — sekcja jest opcjonalna.
+Flovis detects available models automatically. **You can also generate the report
+without AI** — that section is optional. The AI answers in the app's current language.
 
 ---
 
-## 🧪 Testy
+## 🧪 Tests
 
 ```powershell
 python -m pytest tests/ -q
 ```
 
-**28 testów**: silnik i edytor profili, solvery (VLM vs analityczny vs AVL),
-wrapper XFoil + NeuralFoil, **metoda panelowa vs VLM (< 10%)**, I/O projektu, generowanie PDF.
+**28 tests**: airfoil engine and editor, solvers (VLM vs analytic vs AVL), XFoil
+wrapper + NeuralFoil, **panel method vs VLM (< 10%)**, project I/O, PDF generation.
 
 ---
 
-## 📦 Budowa pliku wykonywalnego (.exe)
+## 📦 Building the executable (.exe)
 
 ```powershell
 pip install pyinstaller
 pyinstaller flovis.spec --noconfirm
 ```
 
-Powstaje `dist/Flovis.exe` (jeden plik) z dołączonymi binarkami XFoil/AVL.
+Produces a single-file `dist/Flovis.exe` with XFoil/AVL bundled.
 
-> Uwaga: plik one-file rozpakowuje się do `%TEMP%`. Przy nazwie użytkownika ze
-> znakami spoza ASCII uruchamiaj `.exe` z folderu na ścieżce ASCII (np. `C:\Flovis\`).
+> Note: the one-file exe unpacks to `%TEMP%`. With a non-ASCII username, run the
+> `.exe` from an ASCII path (e.g. `C:\Flovis\`).
 
 ---
 
-## 🏗️ Architektura
+## 🏗️ Architecture
 
 ```
 flovis/
-  app.py                    # punkt wejścia (QApplication, jasny motyw)
+  app.py                    # entry point (QApplication, light theme, i18n)
   core/
-    airfoil/                # generator NACA (klasyczny + zmodyfikowany), edytor, XFoil/NeuralFoil
-    geometry/               # 6 parametrycznych szablonów samolotów
-    solvers/                # VLM (AeroSandbox), AVL, analityczny, metoda panelowa 3D
-    report/                 # wykresy + generator PDF (ReportLab)
-    ai/                     # klient Ollama (interpretacja słowna)
-    project.py              # format .flovis (zapis/odczyt)
+    i18n.py                 # lightweight English/Polish translation
+    airfoil/                # NACA generator (classic + modified), editor, XFoil/NeuralFoil
+    geometry/               # 6 parametric aircraft templates
+    solvers/                # VLM (AeroSandbox), AVL, analytic, 3D panel method
+    report/                 # charts + PDF generator (ReportLab)
+    ai/                     # Ollama client (written interpretation)
+    project.py              # .flovis format (save/load)
   ui/
-    main_window.py          # okno, menu, motyw, onboarding
-    tabs/                   # Szablony / Profile / Analiza / Model 3D / Raport
-    widgets/                # edytor pyqtgraph, widok 3D PyVista, wykresy
+    main_window.py          # window, menu, theme, onboarding, language switch
+    tabs/                   # Templates / Airfoil / Analysis / 3D Model / Report
+    widgets/                # pyqtgraph editor, PyVista 3D view, charts
   resources/
-    styles/flovis.qss       # jasny, minimalistyczny motyw
+    styles/flovis.qss       # light, minimalist theme
     bin/                    # XFoil 6.99, AVL 3.52 (Windows)
 tests/                      # pytest
 ```
 
-| Warstwa | Technologia |
+| Layer | Technology |
 |---|---|
 | UI | PySide6 (Qt6) + matplotlib + pyqtgraph |
-| Widok 3D | PyVista / VTK |
-| Aero 2D | XFoil (subprocess) + NeuralFoil |
-| Aero 3D | AeroSandbox (VLM) + AVL |
-| STEP | gmsh (kernel OpenCASCADE) + metoda panelowa 3D |
-| Raporty | matplotlib + ReportLab |
+| 3D view | PyVista / VTK |
+| 2D aero | XFoil (subprocess) + NeuralFoil |
+| 3D aero | AeroSandbox (VLM) + AVL |
+| STEP | gmsh (OpenCASCADE kernel) + 3D panel method |
+| Reports | matplotlib + ReportLab |
 | AI | Ollama (`qwen3:30b-a3b`) |
 
 ---
 
-## 🔬 Jak to działa (w skrócie)
+## 🔬 How it works (in short)
 
-- **Profile NACA** — generator klasyczny i **zmodyfikowany 4-cyfrowy** (przesuwana
-  pozycja maks. grubości, regulowany promień natarcia), np. `0011-0.825-35`.
-- **VLM** buduje geometrię z rzeczywistych profili i sprzęga się z XFoilem
-  (teoria pasków), dzięki czemu biegun 3D ma realistyczny opór i `CL_max`.
-- **AVL** to „tryb dokładny" — pełne pochodne stateczności i punkt neutralny
-  prosto z solvera.
-- **Metoda panelowa STEP** (source-doublet, warunek Kutty) daje jakościowy
-  rozkład ciśnień na dowolnej geometrii z CAD.
+- **NACA airfoils** — classic and **modified 4-digit** generator (shiftable max
+  thickness position, adjustable LE radius), e.g. `0011-0.825-35`.
+- **VLM** builds geometry from real airfoils and couples with XFoil (strip theory),
+  so the 3D polar has realistic drag and `CL_max`.
+- **AVL** is the "accurate mode" — full stability derivatives and neutral point
+  straight from the solver.
+- **STEP panel method** (source-doublet, Kutta condition) gives a qualitative
+  pressure distribution on any CAD geometry.
 
 ---
 
-## ⚠️ Uwagi inżynierskie (uczciwie)
+## ⚠️ Engineering notes (honest)
 
-- **Metoda panelowa STEP** to solver **niskiego rzędu o charakterze poglądowym** —
-  świetny do wizualizacji rozkładu ciśnień i szybkiej oceny, ale do liczb
-  ilościowych używaj **VLM lub AVL**. Dla dowolnej geometrii jest skalibrowany do
-  VLM na skrzydle prostokątnym (zgodność < ~3%).
-- **Estymator analityczny** służy responsywności („wynik od ręki"); miarodajne
-  wyniki daje VLM/AVL.
+- The **STEP panel method** is a **low-order, qualitative** solver — great for
+  visualizing the pressure distribution and quick sanity checks, but for
+  quantitative numbers use **VLM or AVL**. For arbitrary geometry it is calibrated
+  to VLM on a rectangular wing (agreement < ~3%).
+- The **analytic estimator** exists for responsiveness ("instant answer");
+  trustworthy results come from VLM/AVL.
 
 ---
 
 ## 🗺️ Status
 
-Wszystkie główne funkcje działają end-to-end: **szablon → analiza → AI → PDF**
-oraz **import STEP → rozkład ciśnień 3D**. Zobacz [CHANGELOG.md](CHANGELOG.md).
+All main paths work end-to-end: **template → analysis → AI → PDF** and
+**STEP import → 3D pressure distribution**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## 📜 Licencja
+## 📜 License
 
-Kod Flovis: **MIT** (patrz [LICENSE](LICENSE)).
-Dołączone binarki i biblioteki mają własne licencje — szczegóły w
-[THIRD_PARTY.md](THIRD_PARTY.md) (XFoil i AVL to oprogramowanie Marka Dreli,
-na licencji GPL).
+Flovis code: **MIT** (see [LICENSE](LICENSE)).
+Bundled binaries and libraries keep their own licenses — details in
+[THIRD_PARTY.md](THIRD_PARTY.md) (XFoil and AVL are Mark Drela's GPL software).
 
 ---
 
 <div align="center">
 
-**Zbudowane dla tych, którzy kochają latać to, co sami zaprojektowali. 🛩️**
+**Built for those who love to fly what they designed themselves. 🛩️**
 
 </div>

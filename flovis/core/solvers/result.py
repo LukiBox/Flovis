@@ -53,15 +53,15 @@ class AnalysisResult:
 
     def summary_text(self) -> str:
         return (
-            f"Metoda: {self.method}\n"
+            f"Method: {self.method}\n"
             f"Model: {self.model_name}\n"
             f"V = {self.velocity:.1f} m/s, S = {self.reference_area:.4f} m^2, "
             f"MAC = {self.mac:.4f} m\n"
             f"CL_alpha = {self.CL_alpha:.3f} /rad ({np.deg2rad(1)*self.CL_alpha:.4f} /deg)\n"
             f"Cm_alpha = {self.Cm_alpha:.3f} /rad\n"
-            f"Punkt neutralny x = {self.neutral_point_x:.4f} m\n"
+            f"Neutral point x = {self.neutral_point_x:.4f} m\n"
             f"CG x = {self.cg_x:.4f} m\n"
-            f"Zapas statecznosci = {self.static_margin*100:.1f}% MAC\n"
+            f"Static margin = {self.static_margin*100:.1f}% MAC\n"
             f"CL_max ~ {self.CL_max:.3f}\n"
-            f"(L/D)_max ~ {self.LD_max:.1f} przy alpha = {self.alpha_LD_max:.1f} deg"
+            f"(L/D)_max ~ {self.LD_max:.1f} at alpha = {self.alpha_LD_max:.1f} deg"
         )

@@ -13,12 +13,12 @@ from enum import Enum
 
 
 class Layout(str, Enum):
-    LOW_WING = "dolnoplat klasyczny"
-    HIGH_WING = "gornoplat"
-    TWIN_BOOM = "uklad z belkami"
-    PUSHER = "silnik pchajacy"
-    FLYING_WING = "latajace skrzydlo"
-    CANARD = "kaczka (canard)"
+    LOW_WING = "Low wing (classic)"
+    HIGH_WING = "High wing"
+    TWIN_BOOM = "Twin boom"
+    PUSHER = "Pusher"
+    FLYING_WING = "Flying wing"
+    CANARD = "Canard"
 
 
 @dataclass
@@ -68,7 +68,7 @@ class AircraftModel:
     @property
     def wing(self) -> Surface | None:
         for s in self.surfaces:
-            if s.name.lower().startswith("skrzyd") and not s.is_vertical:
+            if s.name.lower().startswith("wing") and not s.is_vertical:
                 return s
         return self.surfaces[0] if self.surfaces else None
 
@@ -101,13 +101,13 @@ class AircraftModel:
 # ---------- biblioteka szablonow ----------
 
 def _classic(layout: Layout, z_wing: float) -> AircraftModel:
-    wing = Surface("Skrzydlo", span=1.5, root_chord=0.25, tip_chord=0.18,
+    wing = Surface("Wing", span=1.5, root_chord=0.25, tip_chord=0.18,
                    sweep_deg=2, dihedral_deg=4, x_le=0.30, z_pos=z_wing,
                    airfoil_root="NACA 2412", airfoil_tip="NACA 2410")
-    htail = Surface("Usterzenie poziome", span=0.5, root_chord=0.14,
+    htail = Surface("Horizontal tail", span=0.5, root_chord=0.14,
                     tip_chord=0.10, x_le=0.95, z_pos=z_wing,
                     airfoil_root="NACA 0010", airfoil_tip="NACA 0010")
-    vtail = Surface("Usterzenie pionowe", span=0.22, root_chord=0.16,
+    vtail = Surface("Vertical tail", span=0.22, root_chord=0.16,
                     tip_chord=0.10, x_le=0.95, is_vertical=True,
                     airfoil_root="NACA 0010", airfoil_tip="NACA 0010")
     return AircraftModel(
@@ -140,24 +140,24 @@ def make_template(layout) -> AircraftModel:
         m.fuselage_length = 1.0
         return m
     if layout == Layout.CANARD:
-        wing = Surface("Skrzydlo", span=1.5, root_chord=0.26, tip_chord=0.18,
+        wing = Surface("Wing", span=1.5, root_chord=0.26, tip_chord=0.18,
                        sweep_deg=4, dihedral_deg=3, x_le=0.55, z_pos=0.0)
         canard = Surface("Canard", span=0.6, root_chord=0.14, tip_chord=0.10,
                          x_le=0.10, z_pos=0.0,
                          airfoil_root="NACA 0012", airfoil_tip="NACA 0012")
-        vtail = Surface("Usterzenie pionowe", span=0.22, root_chord=0.16,
+        vtail = Surface("Vertical tail", span=0.22, root_chord=0.16,
                         tip_chord=0.10, x_le=0.95, is_vertical=True)
         return AircraftModel(layout.value, layout, [wing, canard, vtail],
                              fuselage_length=1.1, mass_kg=2.2, cg_x=0.58)
     if layout == Layout.FLYING_WING:
-        wing = Surface("Skrzydlo", span=1.6, root_chord=0.35, tip_chord=0.12,
+        wing = Surface("Wing", span=1.6, root_chord=0.35, tip_chord=0.12,
                        sweep_deg=22, dihedral_deg=2, x_le=0.0, z_pos=0.0,
                        airfoil_root="NACA 0012-1.0-30",
                        airfoil_tip="NACA 0010-1.0-30")
         return AircraftModel(layout.value, layout, [wing],
                              fuselage_length=0.35, fuselage_diam=0.08,
                              mass_kg=1.4, cg_x=0.16)
-    raise ValueError(f"Nieznany uklad: {layout}")
+    raise ValueError(f"Unknown layout: {layout}")
 
 
 ALL_TEMPLATES = list(Layout)

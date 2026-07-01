@@ -146,7 +146,7 @@ class Model3DView:
             self._render_step(result)
             return
         if self.model is None:
-            p.add_text("Brak modelu", position="upper_left", color="#334155",
+            p.add_text("No model", position="upper_left", color="#334155",
                        font_size=12)
             return
         m = self.model
@@ -215,7 +215,7 @@ class Model3DView:
             npm = pv.Sphere(radius=max(m.fuselage_diam * 0.18, 0.008), center=(npx, 0, 0))
             self.plotter.add_mesh(npm, color="#059669", name="np")
             self.plotter.add_point_labels(
-                [[npx, 0, -m.fuselage_diam]], ["Pkt neutralny"], font_size=11,
+                [[npx, 0, -m.fuselage_diam]], ["Neutral point"], font_size=11,
                 text_color="#059669", shape=None, name="np_lbl")
 
     def _add_step_pressure(self, result):

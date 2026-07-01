@@ -1,7 +1,7 @@
 [project]
 name = "flovis"
 version = "1.0.0"
-description = "Flovis - uproszczona analiza aerodynamiczna modeli latajacych dla pasjonatow"
+description = "Flovis - simplified aerodynamic analysis of flying models, for hobbyists"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

@@ -22,7 +22,7 @@ def _slope(res):
 def test_analytic_basic():
     m = make_template(Layout.LOW_WING)
     res = solve_analytic(m, velocity=15, alphas=_ALPHAS)
-    assert res.method.startswith("Analityczny")
+    assert res.method.startswith("Analytic")
     assert 3.0 < res.CL_alpha < 7.0          # rozsadne nachylenie /rad
     assert res.static_margin != 0.0
 

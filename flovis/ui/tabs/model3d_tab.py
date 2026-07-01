@@ -1,8 +1,10 @@
-"""Zakladka: Model 3D - wizualizacja bryly i rozkladu cisnienia (PyVista)."""
+"""Tab: 3D Model - geometry and pressure-distribution visualization (PyVista)."""
 from __future__ import annotations
 
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QGroupBox,
                                QPushButton, QCheckBox, QLabel, QMessageBox)
+
+from ...core.i18n import t
 
 
 class Model3DTab(QWidget):
@@ -16,39 +18,39 @@ class Model3DTab(QWidget):
         root = QHBoxLayout(self)
         left = QVBoxLayout()
 
-        box = QGroupBox("Widok 3D")
+        box = QGroupBox(t("3D view"))
         v = QVBoxLayout(box)
-        b_load = QPushButton("Pokaz biezacy model")
+        b_load = QPushButton(t("Show current model"))
         b_load.clicked.connect(self._load_model)
         v.addWidget(b_load)
-        b_press = QPushButton("Nalozy rozklad cisnienia (Cp)")
+        b_press = QPushButton(t("Apply pressure field (Cp)"))
         b_press.setProperty("flat", True)
         b_press.clicked.connect(self._show_pressure)
         v.addWidget(b_press)
-        b_reset = QPushButton("Resetuj widok"); b_reset.setProperty("flat", True)
+        b_reset = QPushButton(t("Reset view")); b_reset.setProperty("flat", True)
         b_reset.clicked.connect(self._reset)
         v.addWidget(b_reset)
         left.addWidget(box)
 
-        layers = QGroupBox("Warstwy")
+        layers = QGroupBox(t("Layers"))
         lv = QVBoxLayout(layers)
-        self.cb_wings = QCheckBox("Skrzydla / usterzenia"); self.cb_wings.setChecked(True)
-        self.cb_fus = QCheckBox("Kadlub"); self.cb_fus.setChecked(True)
-        self.cb_mark = QCheckBox("CG i punkt neutralny"); self.cb_mark.setChecked(True)
+        self.cb_wings = QCheckBox(t("Wings / tails")); self.cb_wings.setChecked(True)
+        self.cb_fus = QCheckBox(t("Fuselage")); self.cb_fus.setChecked(True)
+        self.cb_mark = QCheckBox(t("CG and neutral point")); self.cb_mark.setChecked(True)
         for cb, key in ((self.cb_wings, "skrzydla"), (self.cb_fus, "kadlub"),
                         (self.cb_mark, "markery")):
             cb.toggled.connect(lambda on, k=key: self._toggle(k, on))
             lv.addWidget(cb)
         left.addWidget(layers)
 
-        self.hint = QLabel("Wczytaj model z zakladki Szablony, a tu zobaczysz "
-                           "bryle 3D. Po analizie nalozy mape cisnienia.")
+        self.hint = QLabel(t("Load a model from the Templates tab to see the 3D "
+                             "body here. After an analysis the pressure map is applied."))
         self.hint.setObjectName("hint"); self.hint.setWordWrap(True)
         left.addWidget(self.hint)
         left.addStretch()
 
         self.holder = QVBoxLayout()
-        self.placeholder = QLabel("Widok 3D pojawi sie tutaj po wczytaniu modelu.")
+        self.placeholder = QLabel(t("The 3D view appears here once a model is loaded."))
         self.placeholder.setObjectName("hint")
         self.holder.addWidget(self.placeholder)
 
@@ -68,20 +70,20 @@ class Model3DTab(QWidget):
             return True
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(
-                self, "Widok 3D niedostepny",
-                "Nie udalo sie zainicjowac widoku PyVista/VTK:\n" + str(e))
+                self, t("3D view unavailable"),
+                t("Could not initialize the PyVista/VTK view:\n") + str(e))
             return False
 
     def _load_model(self):
         if self.state.current_model is None:
-            QMessageBox.information(self, "Brak modelu",
-                                    "Najpierw ustaw model w zakladce Szablony.")
+            QMessageBox.information(self, t("No model"),
+                                    t("Set up a model in the Templates tab first."))
             return
         if not self._ensure_view():
             return
         self.view.set_model(self.state.current_model)
-        self.hint.setText("Obracaj mysza, przyblizaj scrollem. "
-                          "Nalozy Cp po wykonaniu analizy panelowej/STEP.")
+        self.hint.setText(t("Rotate with the mouse, zoom with the scroll wheel. "
+                            "Cp is applied after a panel/STEP analysis."))
 
     def _is_step(self, res) -> bool:
         ex = getattr(res, "extras", {}) or {}
@@ -92,19 +94,19 @@ class Model3DTab(QWidget):
             return
         res = self.state.current_result
         if res is None:
-            QMessageBox.information(self, "Brak wynikow",
-                                    "Najpierw uruchom analize (Analiza / STEP).")
+            QMessageBox.information(self, t("No results"),
+                                    t("Run an analysis first (Analysis / STEP)."))
             if self.state.current_model is not None:
                 self.view.set_model(self.state.current_model)
             return
         if not self._is_step(res) and self.state.current_model is None:
-            QMessageBox.information(self, "Brak modelu",
-                                    "Najpierw ustaw model w zakladce Szablony.")
+            QMessageBox.information(self, t("No model"),
+                                    t("Set up a model in the Templates tab first."))
             return
         self._render_pressure(res)
 
     def show_step_result(self, res):
-        """Renderuje geometrie STEP z Cp (wywolywane po analizie STEP)."""
+        """Render STEP geometry with Cp (called after a STEP analysis)."""
         if not self._ensure_view():
             return
         self._render_pressure(res)
@@ -112,8 +114,8 @@ class Model3DTab(QWidget):
     def _render_pressure(self, res):
         from PySide6.QtWidgets import QApplication
         from PySide6.QtCore import Qt
-        self.hint.setText("Licze rozklad cisnienia na powierzchni...")
-        self.state.status("Rozklad cisnienia (Cp) w toku...")
+        self.hint.setText(t("Computing the surface pressure distribution..."))
+        self.state.status(t("Pressure distribution (Cp) running..."))
         QApplication.setOverrideCursor(Qt.WaitCursor)
         QApplication.processEvents()
         try:
@@ -123,9 +125,9 @@ class Model3DTab(QWidget):
                 self.view.show_result(res)
         finally:
             QApplication.restoreOverrideCursor()
-        self.hint.setText("Rozklad Cp: niebieski = podcisnienie (ssanie), "
-                          "czerwony = nadcisnienie (spietrzenie). Obracaj mysza.")
-        self.state.status("Rozklad cisnienia gotowy.")
+        self.hint.setText(t("Cp field: blue = suction (low pressure), "
+                            "red = stagnation (high pressure). Rotate with the mouse."))
+        self.state.status(t("Pressure distribution ready."))
 
     def _toggle(self, key, on):
         if self.view is not None:
@@ -133,4 +135,4 @@ class Model3DTab(QWidget):
 
     def _reset(self):
         if self.view is not None:
-            self.view.render(result=self.state.current_result)
+            self.view.render()

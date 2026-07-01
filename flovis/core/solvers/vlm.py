@@ -198,7 +198,7 @@ def solve_analytic(model: AircraftModel, velocity: float = 15.0,
     Cd0 = 0.022
     CD = Cd0 + CL**2 / (np.pi * e * AR)
 
-    htail = next((s for s in model.surfaces if "poziome" in s.name.lower()), None)
+    htail = next((s for s in model.surfaces if "horizontal" in s.name.lower()), None)
     if htail:
         lt = htail.x_le - model.cg_x
         Vh = (htail.area * lt) / (wing.area * wing.mac)
@@ -212,7 +212,7 @@ def solve_analytic(model: AircraftModel, velocity: float = 15.0,
     CL = np.clip(CL, None, 1.35)
 
     res = AnalysisResult(
-        method="Analityczny (linia nosna)", model_name=model.name,
+        method="Analytic (lifting line)", model_name=model.name,
         alpha_deg=a, CL=CL, CD=CD, Cm=Cm,
         velocity=velocity, reference_area=wing.area,
         mac=wing.mac, cg_x=model.cg_x,

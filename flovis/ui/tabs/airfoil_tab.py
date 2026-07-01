@@ -1,4 +1,4 @@
-"""Zakladka: Generator i interaktywny edytor profili + bieguny 2D."""
+"""Tab: airfoil generator + interactive editor + 2D polars."""
 from __future__ import annotations
 
 import numpy as np
@@ -10,6 +10,7 @@ from PySide6.QtCore import QThread, Signal
 
 from ...core.airfoil import Airfoil, parse_naca, NacaSpec, generate
 from ...core.airfoil import polar2d
+from ...core.i18n import t
 from ..widgets.mpl_canvas import MplCanvas
 from ..widgets.airfoil_editor import AirfoilEditor
 
@@ -45,97 +46,92 @@ class AirfoilTab(QWidget):
         root = QHBoxLayout(self)
         left = QVBoxLayout()
 
-        # --- generator ---
-        gen = QGroupBox("Generator NACA")
+        gen = QGroupBox(t("NACA generator"))
         form = QFormLayout(gen)
         self.notation = QLineEdit("NACA 2412")
-        self.notation.setPlaceholderText("np. 2412 lub 00011-0.825-35")
-        form.addRow("Notacja", self.notation)
-        self.modified = QCheckBox("Profil zmodyfikowany (4-cyfrowy)")
+        self.notation.setPlaceholderText(t("e.g. 2412 or 00011-0.825-35"))
+        form.addRow(t("Notation"), self.notation)
+        self.modified = QCheckBox(t("Modified profile (4-digit)"))
         self.modified.toggled.connect(self._toggle_modified)
         form.addRow(self.modified)
         self.le_factor = QDoubleSpinBox()
         self.le_factor.setRange(0.1, 3.0); self.le_factor.setValue(1.0)
         self.le_factor.setSingleStep(0.05); self.le_factor.setEnabled(False)
-        form.addRow("Wsp. promienia natarcia", self.le_factor)
+        form.addRow(t("LE radius factor"), self.le_factor)
         self.maxt_pos = QDoubleSpinBox()
         self.maxt_pos.setRange(15, 60); self.maxt_pos.setValue(30)
         self.maxt_pos.setSuffix(" %"); self.maxt_pos.setEnabled(False)
-        form.addRow("Polozenie max grubosci", self.maxt_pos)
+        form.addRow(t("Max thickness position"), self.maxt_pos)
         self.npoints = QSpinBox()
         self.npoints.setRange(40, 400); self.npoints.setValue(160)
-        form.addRow("Liczba punktow", self.npoints)
-        self.sharp_te = QCheckBox("Ostra krawedz splywu")
+        form.addRow(t("Number of points"), self.npoints)
+        self.sharp_te = QCheckBox(t("Sharp trailing edge"))
         form.addRow(self.sharp_te)
-        btn_gen = QPushButton("Generuj profil")
+        btn_gen = QPushButton(t("Generate airfoil"))
         btn_gen.clicked.connect(self._generate)
         form.addRow(btn_gen)
         left.addWidget(gen)
 
-        # --- edytor ---
-        edit = QGroupBox("Edytor (przeciagaj punkty myszka)")
+        edit = QGroupBox(t("Editor (drag points with the mouse)"))
         eg = QGridLayout(edit)
-        self.b_undo = QPushButton("Cofnij"); self.b_undo.setProperty("flat", True)
+        self.b_undo = QPushButton(t("Undo")); self.b_undo.setProperty("flat", True)
         self.b_undo.clicked.connect(self._undo)
-        self.b_redo = QPushButton("Ponow"); self.b_redo.setProperty("flat", True)
+        self.b_redo = QPushButton(t("Redo")); self.b_redo.setProperty("flat", True)
         self.b_redo.clicked.connect(self._redo)
-        b_ins = QPushButton("Wstaw punkt"); b_ins.setProperty("flat", True)
+        b_ins = QPushButton(t("Insert point")); b_ins.setProperty("flat", True)
         b_ins.clicked.connect(lambda: self._op(self.editor.insert_point))
-        b_del = QPushButton("Usun punkt"); b_del.setProperty("flat", True)
+        b_del = QPushButton(t("Delete point")); b_del.setProperty("flat", True)
         b_del.clicked.connect(lambda: self._op(self.editor.delete_point))
-        b_smooth = QPushButton("Wygladz"); b_smooth.setProperty("flat", True)
+        b_smooth = QPushButton(t("Smooth")); b_smooth.setProperty("flat", True)
         b_smooth.clicked.connect(self._smooth)
-        b_repanel = QPushButton("Repanelizacja"); b_repanel.setProperty("flat", True)
+        b_repanel = QPushButton(t("Repanel")); b_repanel.setProperty("flat", True)
         b_repanel.clicked.connect(self._repanel)
         eg.addWidget(self.b_undo, 0, 0); eg.addWidget(self.b_redo, 0, 1)
         eg.addWidget(b_ins, 1, 0); eg.addWidget(b_del, 1, 1)
         eg.addWidget(b_smooth, 2, 0); eg.addWidget(b_repanel, 2, 1)
-        self.snap = QCheckBox("Snap do cieciwy"); self.snap.setChecked(True)
+        self.snap = QCheckBox(t("Snap to chord")); self.snap.setChecked(True)
         self.snap.toggled.connect(self._toggle_snap)
-        self.compare = QCheckBox("Pokaz 'przed' (po wygladzaniu)")
+        self.compare = QCheckBox(t("Show 'before' (after smoothing)"))
         self.compare.toggled.connect(self._refresh_ghost)
         eg.addWidget(self.snap, 3, 0); eg.addWidget(self.compare, 3, 1)
         self.scale = QDoubleSpinBox(); self.scale.setRange(0.3, 2.0)
         self.scale.setValue(1.0); self.scale.setSingleStep(0.05)
-        b_scale = QPushButton("Skala grubosci"); b_scale.setProperty("flat", True)
+        b_scale = QPushButton(t("Thickness scale")); b_scale.setProperty("flat", True)
         b_scale.clicked.connect(self._apply_scale)
         eg.addWidget(self.scale, 4, 0); eg.addWidget(b_scale, 4, 1)
         left.addWidget(edit)
 
-        # --- plik ---
-        io_box = QGroupBox("Plik")
+        io_box = QGroupBox(t("File"))
         iof = QVBoxLayout(io_box)
-        b_load = QPushButton("Wczytaj .dat"); b_load.setProperty("flat", True)
+        b_load = QPushButton(t("Load .dat")); b_load.setProperty("flat", True)
         b_load.clicked.connect(self._load_dat)
-        b_save = QPushButton("Zapisz .dat (Selig)")
+        b_save = QPushButton(t("Save .dat (Selig)"))
         b_save.clicked.connect(self._save_dat)
-        b_use = QPushButton("Uzyj w analizie"); b_use.setProperty("flat", True)
+        b_use = QPushButton(t("Use in analysis")); b_use.setProperty("flat", True)
         b_use.clicked.connect(self._use_in_analysis)
         iof.addWidget(b_load); iof.addWidget(b_save); iof.addWidget(b_use)
         left.addWidget(io_box)
 
-        # --- bieguny ---
-        pol = QGroupBox("Bieguny profilu (2D)")
+        pol = QGroupBox(t("Airfoil polars (2D)"))
         pf = QFormLayout(pol)
         self.reynolds = QDoubleSpinBox(); self.reynolds.setRange(1e4, 1e7)
         self.reynolds.setDecimals(0); self.reynolds.setSingleStep(5e4)
         self.reynolds.setValue(3e5)
-        pf.addRow("Liczba Reynoldsa", self.reynolds)
+        pf.addRow(t("Reynolds number"), self.reynolds)
         self.ncrit = QDoubleSpinBox(); self.ncrit.setRange(1, 14)
         self.ncrit.setValue(9.0); self.ncrit.setSingleStep(0.5)
         pf.addRow("Ncrit", self.ncrit)
         self.method = QComboBox()
-        self.method.addItem("Automatyczny (XFoil/NeuralFoil)", "auto")
+        self.method.addItem(t("Automatic (XFoil/NeuralFoil)"), "auto")
         self.method.addItem("XFoil", "xfoil")
         self.method.addItem("NeuralFoil", "neuralfoil")
-        pf.addRow("Metoda", self.method)
-        self.b_polar = QPushButton("Policz bieguny")
+        pf.addRow(t("Method"), self.method)
+        self.b_polar = QPushButton(t("Compute polars"))
         self.b_polar.clicked.connect(self._run_polar)
         pf.addRow(self.b_polar)
         left.addWidget(pol)
         left.addStretch()
 
-        # --- prawa strona ---
         right = QVBoxLayout()
         self.editor = AirfoilEditor()
         self.editor.airfoilChanged.connect(self._on_airfoil_changed)
@@ -147,7 +143,6 @@ class AirfoilTab(QWidget):
         self.valid_lbl = QLabel(""); self.valid_lbl.setObjectName("hint")
         right.addWidget(self.valid_lbl)
 
-        # wykresy biegunow
         pgrid = QGridLayout()
         self.pcanvas = {}
         for i, key in enumerate(["cl", "polar", "cp"]):
@@ -185,9 +180,9 @@ class AirfoilTab(QWidget):
             af = Airfoil(x=x, y=y, name=spec.name, meta={"naca": spec.__dict__})
             self.editor.set_airfoil(af, reset=True)
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Blad generowania", str(e))
+            QMessageBox.warning(self, t("Generation error"), str(e))
 
-    # ----------------------------------------------------------------- edycja
+    # ----------------------------------------------------------------- editing
     def _op(self, fn):
         fn()
 
@@ -211,7 +206,6 @@ class AirfoilTab(QWidget):
             self.editor.set_airfoil(af.scale_thickness(self.scale.value()))
 
     def _refresh_ghost(self, *_):
-        # pokaz kontur sprzed wygladzenia jako bladsza linia
         if self.ghost is not None:
             self.editor.plot.removeItem(self.ghost)
             self.ghost = None
@@ -223,10 +217,10 @@ class AirfoilTab(QWidget):
                 pen=pg.mkPen("#9ca3af", width=1, style=2))
             self.editor.plot.addItem(self.ghost)
 
-    # ------------------------------------------------------------------- plik
+    # ------------------------------------------------------------------- file
     def _load_dat(self):
-        fn, _ = QFileDialog.getOpenFileName(self, "Wczytaj profil", "",
-                                            "Profil (*.dat *.txt)")
+        fn, _ = QFileDialog.getOpenFileName(self, t("Load airfoil"), "",
+                                            t("Airfoil (*.dat *.txt)"))
         if fn:
             self.editor.set_airfoil(Airfoil.from_dat(fn), reset=True)
 
@@ -234,21 +228,22 @@ class AirfoilTab(QWidget):
         af = self.editor.airfoil
         if not af:
             return
-        fn, _ = QFileDialog.getSaveFileName(self, "Zapisz profil",
+        fn, _ = QFileDialog.getSaveFileName(self, t("Save airfoil"),
                                             f"{af.name}.dat",
-                                            "Profil Selig (*.dat)")
+                                            t("Selig airfoil (*.dat)"))
         if fn:
             af.to_dat(fn)
-            QMessageBox.information(self, "Zapisano", f"Profil zapisany:\n{fn}")
+            QMessageBox.information(self, t("Saved"),
+                                    t("Airfoil saved:\n{}").format(fn))
 
     def _use_in_analysis(self):
         if self.editor.airfoil is not None:
             self.state.current_airfoil = self.editor.airfoil
             QMessageBox.information(self, "OK",
-                                    "Profil ustawiony jako biezacy do analizy.")
+                                    t("Airfoil set as current for analysis."))
 
     def set_airfoil(self, af):
-        """Ustawia profil z zewnatrz (np. po wczytaniu projektu)."""
+        """Set the airfoil from outside (e.g. after loading a project)."""
         self.editor.set_airfoil(af, reset=True)
 
     # --------------------------------------------------------------- callbacks
@@ -258,30 +253,31 @@ class AirfoilTab(QWidget):
         self.b_redo.setEnabled(self.editor.can_redo())
         s = af.summary()
         self.info.setText(
-            f"Punkty: {s['n_points']}   |   grubosc max: "
-            f"{s['max_thickness']*100:.1f}% @ {s['max_thickness_pos']*100:.0f}%c"
-            f"   |   strzalka: {s['max_camber']*100:.2f}% "
-            f"@ {s['max_camber_pos']*100:.0f}%c")
+            t("Points: {n}   |   max thickness: {tk}% @ {tp}%c   |   camber: {cm}% @ {cp}%c")
+            .format(n=s['n_points'], tk=f"{s['max_thickness']*100:.1f}",
+                    tp=f"{s['max_thickness_pos']*100:.0f}",
+                    cm=f"{s['max_camber']*100:.2f}",
+                    cp=f"{s['max_camber_pos']*100:.0f}"))
         issues = af.validate()
         if issues:
-            self.valid_lbl.setText("Uwaga: " + " ".join(issues))
+            self.valid_lbl.setText(t("Warning: ") + " ".join(issues))
             self.valid_lbl.setStyleSheet("color:#dc2626;")
         else:
-            self.valid_lbl.setText("Geometria poprawna.")
+            self.valid_lbl.setText(t("Geometry OK."))
             self.valid_lbl.setStyleSheet("color:#059669;")
 
-    # ----------------------------------------------------------------- bieguny
+    # ----------------------------------------------------------------- polars
     def _run_polar(self):
         af = self.editor.airfoil
         if af is None:
             return
         if af.validate():
-            QMessageBox.warning(self, "Geometria",
-                                "Popraw geometrie profilu przed analiza biegunow.")
+            QMessageBox.warning(self, t("Geometry"),
+                                t("Fix the airfoil geometry before running polars."))
             return
         self.b_polar.setEnabled(False)
-        self.b_polar.setText("Liczenie...")
-        self.state.status("Analiza biegunow profilu...")
+        self.b_polar.setText(t("Computing..."))
+        self.state.status(t("Airfoil polar analysis..."))
         self.pworker = _PolarWorker(
             af, np.linspace(-6, 16, 23), self.reynolds.value(),
             self.ncrit.value(), self.method.currentData())
@@ -290,42 +286,39 @@ class AirfoilTab(QWidget):
         self.pworker.start()
 
     def _polar_failed(self, msg):
-        self.b_polar.setEnabled(True); self.b_polar.setText("Policz bieguny")
-        QMessageBox.critical(self, "Blad analizy 2D", msg)
+        self.b_polar.setEnabled(True); self.b_polar.setText(t("Compute polars"))
+        QMessageBox.critical(self, t("2D analysis error"), msg)
 
     def _show_polar(self, res):
-        self.b_polar.setEnabled(True); self.b_polar.setText("Policz bieguny")
+        self.b_polar.setEnabled(True); self.b_polar.setText(t("Compute polars"))
         self.state.current_polar2d = res
-        # Cl(alfa)
         c = self.pcanvas["cl"]; c.clear()
         c.ax.plot(res.alpha, res.cl, "-o", color="#2563eb", ms=2.5, lw=1.4)
         c.ax.axhline(0, color="#9ca3af", lw=0.5)
         c.ax.set_xlabel("alpha [deg]", fontsize=8); c.ax.set_ylabel("Cl", fontsize=8)
-        c.ax.set_title("Cl(alfa)", fontsize=9, weight="bold")
+        c.ax.set_title("Cl(alpha)", fontsize=9, weight="bold")
         self._style(c)
-        # Cl(Cd)
         c = self.pcanvas["polar"]; c.clear()
         c.ax.plot(res.cd, res.cl, "-o", color="#2563eb", ms=2.5, lw=1.4)
         c.ax.set_xlabel("Cd", fontsize=8); c.ax.set_ylabel("Cl", fontsize=8)
-        c.ax.set_title("Biegunowa Cl(Cd)", fontsize=9, weight="bold")
+        c.ax.set_title("Polar Cl(Cd)", fontsize=9, weight="bold")
         self._style(c)
-        # Cp
         c = self.pcanvas["cp"]; c.clear()
         if res.cp is not None and res.cp_x is not None:
             c.ax.plot(res.cp_x, res.cp, "-", color="#dc2626", lw=1.2)
             c.ax.invert_yaxis()
             c.ax.set_title(f"Cp @ {res.cp_alpha:.0f} deg", fontsize=9, weight="bold")
         else:
-            c.ax.text(0.5, 0.5, "Cp dostepne tylko z XFoila",
+            c.ax.text(0.5, 0.5, t("Cp available only from XFoil"),
                       ha="center", va="center", fontsize=8, color="#6b7280")
-            c.ax.set_title("Rozklad Cp", fontsize=9, weight="bold")
+            c.ax.set_title(t("Cp distribution"), fontsize=9, weight="bold")
         c.ax.set_xlabel("x/c", fontsize=8); c.ax.set_ylabel("Cp", fontsize=8)
         self._style(c)
         self.polar_info.setText(
             f"[{res.method}]  Cl_max = {res.cl_max:.2f} @ {res.alpha_stall:.1f} deg"
             f"   |   (Cl/Cd)_max = {res.ld_max:.0f} @ {res.alpha_ld_max:.1f} deg"
             f"   |   Re = {res.reynolds:.0f}")
-        self.state.status(f"Bieguny gotowe ({res.method}).")
+        self.state.status(t("Polars ready ({}).").format(res.method))
 
     @staticmethod
     def _style(c):
