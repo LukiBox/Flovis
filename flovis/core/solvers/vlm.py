@@ -1,14 +1,13 @@
 """
-Solver dla szablonow - metoda siatki wirowej (VLM) z realnymi profilami.
+Template solver - vortex lattice method (VLM) with real airfoils.
 
-Domyslnie uzywa AeroSandbox (VLM). Geometria budowana jest z rzeczywistych
-profili zapisanych w Surface.airfoil_root/airfoil_tip (notacja NACA lub plik
-.dat). Opcjonalne sprzezenie VLM<->XFoil (strip theory) dodaje realistyczny
-opor profilowy i ogranicza CL przez 2D Cl_max profilu, dzieki czemu biegun 3D
-jest miarodajny.
+Uses AeroSandbox (VLM) by default. Geometry is built from the actual airfoils
+stored in Surface.airfoil_root/airfoil_tip (NACA notation or a .dat file).
+Optional VLM<->XFoil coupling (strip theory) adds realistic profile drag and
+caps CL with the 2D Cl_max, making the 3D polar trustworthy.
 
-Gdy AeroSandbox nie jest dostepny - wbudowany estymator analityczny (teoria
-linii nosnej + objetosc usterzenia). Oba zwracaja AnalysisResult.
+When AeroSandbox is unavailable - a built-in analytic estimator (lifting-line
+theory + tail volume). Both return an AnalysisResult.
 """
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ from ..airfoil import Airfoil
 from ..geometry.templates import AircraftModel, Surface
 from .result import AnalysisResult
 
-# lepkosc kinematyczna powietrza ~15 C [m^2/s]
+# kinematic viscosity of air at ~15 C [m^2/s]
 _NU_AIR = 1.5e-5
 
 
@@ -45,7 +44,7 @@ def _common_postprocess(res: AnalysisResult) -> AnalysisResult:
 # ---------------------------------------------------------------------------
 
 def _asb_airfoil(spec: str):
-    """Zamienia opis profilu (NACA/.dat) na aerosandbox.Airfoil z wspolrzednych."""
+    """Convert an airfoil spec (NACA/.dat) to an aerosandbox.Airfoil."""
     import aerosandbox as asb
     af = Airfoil.from_spec(spec, n_points=120)
     coords = np.column_stack([af.x, af.y])
@@ -75,22 +74,22 @@ def _build_airplane(model: AircraftModel):
 
 def _profile_drag_model(model: AircraftModel, velocity: float):
     """
-    Buduje funkcje Cd_profilowy(CL) i 2D Cl_max z biegunow profilu nasady
-    skrzydla (XFoil lub NeuralFoil) przy liczbie Reynoldsa lotu.
+    Build a profile-drag function Cd(CL) and the 2D Cl_max from the wing-root
+    airfoil polars (XFoil or NeuralFoil) at the flight Reynolds number.
 
-    Zwraca (cd_of_cl, cl_max_2d, info) albo (None, None, info) gdy brak danych.
+    Returns (cd_of_cl, cl_max_2d, info) or (None, None, info) if unavailable.
     """
     from ..airfoil import polar2d
     wing = model.wing
     if wing is None:
-        return None, None, "brak skrzydla"
+        return None, None, "no wing"
     re = velocity * wing.mac / _NU_AIR
     try:
         af = Airfoil.from_spec(wing.airfoil_root, n_points=160)
         pol = polar2d.analyze_polar(af, alphas=np.linspace(-6, 16, 23),
                                     reynolds=re, prefer="auto")
     except Exception as e:  # noqa: BLE001
-        return None, None, f"bieguny 2D niedostepne ({e})"
+        return None, None, f"2D polars unavailable ({e})"
     cl = np.asarray(pol.cl); cd = np.asarray(pol.cd)
     order = np.argsort(cl)
     cl_s, cd_s = cl[order], cd[order]
@@ -102,15 +101,15 @@ def _profile_drag_model(model: AircraftModel, velocity: float):
 
 
 def _stability_derivatives(airplane, velocity, alpha_ref=2.0):
-    """Liczy pochodne po predkosci katowej q (CL_q, Cm_q) metoda roznicowa.
+    """Compute pitch-rate derivatives (CL_q, Cm_q) by finite differences.
 
-    Zwraca slownik (moze byc pusty, gdy AeroSandbox nie wspiera danego pola).
+    Returns a dict (may be empty when AeroSandbox lacks the field).
     """
     import aerosandbox as asb
     out = {}
     try:
         mac = airplane.wings[0].mean_aerodynamic_chord()
-        qhat = 0.02                      # bezwymiarowa predkosc pochylania
+        qhat = 0.02                      # nondimensional pitch rate
         q = qhat * 2 * velocity / mac
         base = asb.VortexLatticeMethod(
             airplane=airplane,
@@ -133,7 +132,7 @@ def solve_aerosandbox(model: AircraftModel, velocity: float = 15.0,
 
     airplane = _build_airplane(model)
     alphas = np.asarray(alphas, float)
-    # liczymy kat po kacie (stabilne przy numpy 2.x / aerosandbox)
+    # solve angle by angle (stable with numpy 2.x / aerosandbox)
     CL_l, CD_l, Cm_l = [], [], []
     for a in alphas:
         op = asb.OperatingPoint(velocity=velocity, alpha=float(a))
@@ -142,25 +141,25 @@ def solve_aerosandbox(model: AircraftModel, velocity: float = 15.0,
         CD_l.append(float(aero["CD"]))
         Cm_l.append(float(aero["Cm"]))
     CL = np.array(CL_l)
-    CD_ind = np.array(CD_l)        # opor indukowany z VLM
+    CD_ind = np.array(CD_l)        # induced drag from VLM
     Cm = np.array(Cm_l)
 
     extras = {}
-    note = "VLM (opor indukowany)"
+    note = "VLM (induced drag)"
     cl_max_2d = None
     if viscous:
         cd_of_cl, cl_max_2d, info = _profile_drag_model(model, velocity)
         if cd_of_cl is not None:
-            CD = CD_ind + cd_of_cl(CL) + 0.006     # + drobny opor kadluba/szczegolow
-            note = f"VLM + opor profilowy 2D ({info})"
+            CD = CD_ind + cd_of_cl(CL) + 0.006     # + small fuselage/detail drag
+            note = f"VLM + 2D profile drag ({info})"
             extras["coupling"] = info
         else:
             CD = CD_ind + 0.012
-            note = f"VLM (ryczaltowy opor pasozytniczy; {info})"
+            note = f"VLM (flat parasite drag; {info})"
     else:
         CD = CD_ind + 0.012
 
-    # ograniczenie CL przez 2D Cl_max (3D max ~0.9 * 2D)
+    # cap CL with the 2D Cl_max (3D max ~0.9 * 2D)
     if cl_max_2d:
         cl_max_3d = 0.9 * cl_max_2d
         CL = np.minimum(CL, cl_max_3d)
@@ -180,7 +179,7 @@ def solve_aerosandbox(model: AircraftModel, velocity: float = 15.0,
 
 
 # ---------------------------------------------------------------------------
-# Estymator analityczny (fallback)
+# Analytic estimator (fallback)
 # ---------------------------------------------------------------------------
 
 def solve_analytic(model: AircraftModel, velocity: float = 15.0,
@@ -223,7 +222,7 @@ def solve_analytic(model: AircraftModel, velocity: float = 15.0,
 
 def analyze(model: AircraftModel, velocity: float = 15.0,
             alphas=np.linspace(-4, 12, 9), prefer="auto") -> AnalysisResult:
-    """Wybiera solver. prefer: 'auto' | 'aerosandbox' | 'analytic' | 'avl'."""
+    """Pick a solver. prefer: 'auto' | 'aerosandbox' | 'analytic' | 'avl'."""
     if prefer == "avl":
         from .avl import solve_avl
         return solve_avl(model, velocity, alphas)

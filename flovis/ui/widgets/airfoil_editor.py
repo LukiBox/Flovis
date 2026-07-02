@@ -1,15 +1,15 @@
 """
-Interaktywny edytor profilu (pyqtgraph).
+Interactive airfoil editor (pyqtgraph).
 
-Mozliwosci:
-  * przeciaganie pojedynczych punktow konturu myszka,
-  * wstawianie / usuwanie punktow (na zaznaczonym),
-  * undo / redo (stos stanow Airfoil),
-  * snap do cieciwy (y -> 0 przy malej odleglosci),
-  * repanelizacja kosinusowa,
-  * walidacja geometrii na zywo (kolor + komunikat).
+Features:
+  * dragging individual contour points with the mouse,
+  * inserting / deleting points (at the selection),
+  * undo / redo (a stack of Airfoil states),
+  * snap to chord (y -> 0 within a small distance),
+  * cosine repaneling,
+  * live geometry validation (color + message).
 
-Emituje sygnal airfoilChanged(Airfoil) po kazdej zmianie.
+Emits airfoilChanged(Airfoil) after every change.
 """
 from __future__ import annotations
 

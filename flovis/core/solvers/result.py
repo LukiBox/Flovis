@@ -1,4 +1,4 @@
-"""Wspolny format wynikow analizy aerodynamicznej."""
+"""Common result format for all aerodynamic analyses."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
@@ -10,22 +10,22 @@ import numpy as np
 class AnalysisResult:
     method: str                       # "VLM (AeroSandbox)", "AVL", "Panel 3D", "Analityczny"
     model_name: str
-    alpha_deg: np.ndarray             # przebieg kata natarcia
+    alpha_deg: np.ndarray             # angle-of-attack sweep
     CL: np.ndarray
     CD: np.ndarray
-    Cm: np.ndarray                    # moment wzgledem CG
+    Cm: np.ndarray                    # moment about the CG
     velocity: float = 15.0            # [m/s]
     reference_area: float = 0.0
     mac: float = 0.0
 
-    # stateczność
+    # stability
     CL_alpha: float = 0.0             # [1/rad]
     Cm_alpha: float = 0.0             # [1/rad]
     neutral_point_x: float = 0.0      # [m]
-    static_margin: float = 0.0        # ulamek MAC
+    static_margin: float = 0.0        # fraction of MAC
     cg_x: float = 0.0
 
-    # osiagi
+    # performance
     CL_max: float = 0.0
     LD_max: float = 0.0
     alpha_LD_max: float = 0.0
@@ -38,7 +38,7 @@ class AnalysisResult:
         d = asdict(self)
         for k in ("alpha_deg", "CL", "CD", "Cm"):
             d[k] = np.asarray(d[k]).round(5).tolist()
-        # zostaw tylko skalarne extras (odrzuc tablice/pole Cp itp.)
+        # keep only scalar extras (drop arrays / the Cp field etc.)
         d["extras"] = {k: v for k, v in (self.extras or {}).items()
                        if isinstance(v, (int, float, str, bool))}
         return d

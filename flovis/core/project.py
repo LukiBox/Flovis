@@ -1,8 +1,8 @@
 """
-Format projektu Flovis (.flovis) - zip z plikami JSON/dat.
+Flovis project format (.flovis) - a zip of JSON/dat files.
 
-Zawiera: model (geometria), profil biezacy (.dat), ustawienia analizy oraz
-ostatni wynik. Pozwala zapisac i wczytac caly stan pracy bez ponownej analizy.
+Contains: the model (geometry), the current airfoil (.dat), analysis
+settings and the last result. Restores the whole working state.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ FORMAT_VERSION = 1
 def save_project(path: str | Path, model: AircraftModel | None = None,
                  airfoil: Airfoil | None = None, result: AnalysisResult | None = None,
                  settings: dict | None = None) -> Path:
-    """Zapisuje stan pracy do pliku .flovis (zip)."""
+    """Save the working state to a .flovis (zip) file."""
     path = Path(path)
     if path.suffix != ".flovis":
         path = path.with_suffix(".flovis")
@@ -51,8 +51,8 @@ def save_project(path: str | Path, model: AircraftModel | None = None,
 
 def load_project(path: str | Path) -> dict:
     """
-    Wczytuje projekt .flovis. Zwraca slownik:
-    {model, airfoil, result, settings}. Brakujace elementy = None.
+    Load a .flovis project. Returns a dict:
+    {model, airfoil, result, settings}. Missing pieces = None.
     """
     path = Path(path)
     out = {"model": None, "airfoil": None, "result": None, "settings": {}}

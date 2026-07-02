@@ -1,25 +1,24 @@
 """
-Generatory profili NACA dla Flovis.
+NACA airfoil generators for Flovis.
 
-Obsluga:
-  * NACA 4-cyfrowy klasyczny (np. 2412, 0012)
-  * NACA 4-cyfrowy ZMODYFIKOWANY (np. 0012-63), z dwoma dodatkowymi
-    parametrami:
-        - wspolczynnik promienia natarcia (LE radius factor),
-          1.0 = jak w klasycznym 4-cyfrowym,
-        - polozenie maksymalnej grubosci (x/c).
+Supports:
+  * classic 4-digit NACA (e.g. 2412, 0012)
+  * MODIFIED 4-digit NACA (e.g. 0012-63), with two extra parameters:
+        - leading-edge radius factor (1.0 = classic 4-digit),
+        - position of maximum thickness (x/c).
 
-Metoda dla profilu zmodyfikowanego jest klasyczna (Stack & von Doenhoff,
-NACA Report 492 / Ladson): rozdzial rozkladu grubosci na czesc przednia
-i tylna z warunkami ciaglosci wartosci, nachylenia i krzywizny w punkcie
-maksymalnej grubosci.
+The modified-profile method is the classic one (Stack & von Doenhoff,
+NACA Report 492 / Ladson): the thickness distribution is split into a
+forward and an aft part with continuity of value, slope and curvature at
+the maximum-thickness point.
 
-Rozklad grubosci (polowa grubosci, y_t):
-  przod  0 <= x <= m :  y_t = 5t (a0*sqrt(x) + a1*x + a2*x^2 + a3*x^3)
-  tyl    m <= x <= 1 :  y_t = 5t (d0 + d1*X + d2*X^2 + d3*X^3),  X = 1 - x
+Thickness distribution (half thickness, y_t):
+  fore  0 <= x <= m :  y_t = 5t (a0*sqrt(x) + a1*x + a2*x^2 + a3*x^3)
+  aft   m <= x <= 1 :  y_t = 5t (d0 + d1*X + d2*X^2 + d3*X^3),  X = 1 - x
 
-gdzie a0 wynika z promienia natarcia, a pozostale wspolczynniki z warunkow
-domkniecia. Dla LE factor = 1.0 i m = 0.3 odtwarza klasyczny profil 4-cyfrowy.
+where a0 follows from the LE radius and the remaining coefficients from
+the closure conditions. LE factor = 1.0 and m = 0.3 reproduce the classic
+4-digit profile.
 """
 from __future__ import annotations
 
@@ -29,8 +28,8 @@ from dataclasses import dataclass
 import numpy as np
 
 
-# Tabela nachylenia krawedzi splywu d1 w funkcji polozenia max. grubosci
-# (NACA, wartosci klasyczne). Interpolacja liniowa, klampowanie na brzegach.
+# Trailing-edge slope table d1 vs. maximum-thickness position
+# (classic NACA values). Linear interpolation, clamped at the ends.
 _D1_TABLE_X = np.array([0.2, 0.3, 0.4, 0.5, 0.6])
 _D1_TABLE_D1 = np.array([0.200, 0.234, 0.315, 0.465, 0.700])
 
@@ -40,13 +39,13 @@ def _d1_from_position(m: float) -> float:
 
 
 def _cosine_spacing(n: int) -> np.ndarray:
-    """Zageszczenie punktow przy krawedziach natarcia i splywu."""
+    """Cluster points near the leading and trailing edges."""
     beta = np.linspace(0.0, np.pi, n)
     return 0.5 * (1.0 - np.cos(beta))
 
 
 def _camber_line(x: np.ndarray, m: float, p: float):
-    """Klasyczna linia szkieletowa 4-cyfrowa. Zwraca (yc, dyc/dx)."""
+    """Classic 4-digit camber line. Returns (yc, dyc/dx)."""
     yc = np.zeros_like(x)
     dyc = np.zeros_like(x)
     if m == 0.0 or p == 0.0:
@@ -61,7 +60,7 @@ def _camber_line(x: np.ndarray, m: float, p: float):
 
 
 def _thickness_standard(x: np.ndarray, t: float, sharp_te: bool) -> np.ndarray:
-    """Klasyczny rozklad grubosci 4-cyfrowy (polowa grubosci)."""
+    """Classic 4-digit thickness distribution (half thickness)."""
     a4 = -0.1036 if sharp_te else -0.1015
     return 5 * t * (
         0.2969 * np.sqrt(x)
@@ -75,10 +74,10 @@ def _thickness_standard(x: np.ndarray, t: float, sharp_te: bool) -> np.ndarray:
 def _thickness_modified(x: np.ndarray, t: float, m: float, le_factor: float,
                         sharp_te: bool) -> np.ndarray:
     """
-    Zmodyfikowany rozklad grubosci 4-cyfrowy.
+    Modified 4-digit thickness distribution.
 
-    m         - polozenie maksymalnej grubosci (x/c), np. 0.35
-    le_factor - mnoznik promienia natarcia (1.0 = klasyczny)
+    m         - maximum-thickness position (x/c), e.g. 0.35
+    le_factor - LE radius multiplier (1.0 = classic)
     """
     # a0 z promienia natarcia: r_LE = 1.1019*t^2*le_factor^2  =>  a0 = 0.296904*le_factor
     a0 = 0.296904 * le_factor
@@ -126,7 +125,7 @@ def _thickness_modified(x: np.ndarray, t: float, m: float, le_factor: float,
 
 @dataclass
 class NacaSpec:
-    """Znormalizowana specyfikacja profilu NACA."""
+    """Normalized NACA airfoil specification."""
     max_camber: float = 0.0       # m, ulamek (0.02 = 2%)
     camber_pos: float = 0.0       # p, ulamek (0.4 = 40%)
     thickness: float = 0.12       # t, ulamek (0.12 = 12%)
@@ -144,27 +143,27 @@ class NacaSpec:
 
 def parse_naca(text: str) -> NacaSpec:
     """
-    Parsuje notacje NACA.
+    Parse NACA notation.
 
-    Akceptuje:
-      "2412"              -> klasyczny 4-cyfrowy
-      "0012"              -> symetryczny klasyczny
-      "0012-6-3"          -> zmodyfikowany: LE index 6, max grubosc 30%
-      "00011-0.825-35"    -> rozszerzona notacja Flovis:
-                             cyfry profilu, wspolczynnik LE, pozycja max grubosci [%]
+    Accepts:
+      "2412"              -> classic 4-digit
+      "0012"              -> classic symmetric
+      "0012-6-3"          -> modified: LE index 6, max thickness at 30%
+      "00011-0.825-35"    -> extended Flovis notation:
+                             profile digits, LE factor, max-thickness position [%]
 
-    W notacji rozszerzonej pierwszy czlon to cyfry camber+grubosc:
-      ostatnie 2 cyfry = grubosc [%], poprzedzajace = camber (m, p).
+    In the extended notation the first token is the camber+thickness digits:
+      last 2 digits = thickness [%], the preceding ones = camber (m, p).
     """
     text = text.strip().upper().replace("NACA", "").strip()
     parts = [p for p in re.split(r"[-\s]+", text) if p]
     if not parts:
-        raise ValueError("Pusta specyfikacja NACA")
+        raise ValueError("Empty NACA specification")
 
     digits = parts[0]
     if len(digits) < 4:
         digits = digits.zfill(4)
-    # ostatnie 2 cyfry: grubosc; reszta: camber
+    # last 2 digits: thickness; the rest: camber
     thickness = int(digits[-2:]) / 100.0
     camber_digits = digits[:-2]
     if len(camber_digits) >= 2:
@@ -184,20 +183,20 @@ def parse_naca(text: str) -> NacaSpec:
         pos = float(parts[2])
         spec.max_thickness_pos = pos / 100.0 if pos > 1.0 else pos
     elif len(parts) == 2:
-        # forma klasyczna zmodyfikowana "IT" jako jeden czlon, np. "63"
+        # classic modified "IT" form as a single token, e.g. "63"
         spec.modified = True
         it = parts[1]
-        spec.le_factor = int(it[0]) / 6.0          # indeks LE: 6 = normalny
+        spec.le_factor = int(it[0]) / 6.0          # LE index: 6 = normal
         spec.max_thickness_pos = int(it[1]) / 10.0
     return spec
 
 
 def generate(spec: NacaSpec, n_points: int = 160, sharp_te: bool = False):
     """
-    Generuje wspolrzedne profilu w kolejnosci Seliga:
-    od krawedzi splywu gora -> natarcie -> krawedz splywu dol.
+    Generate airfoil coordinates in Selig order:
+    upper trailing edge -> leading edge -> lower trailing edge.
 
-    Zwraca (x, y) jako tablice numpy.
+    Returns (x, y) as numpy arrays.
     """
     xc = _cosine_spacing(n_points // 2 + 1)
     yc, dyc = _camber_line(xc, spec.max_camber, spec.camber_pos)
@@ -214,14 +213,14 @@ def generate(spec: NacaSpec, n_points: int = 160, sharp_te: bool = False):
     xl = xc + yt * np.sin(theta)
     yl = yc - yt * np.cos(theta)
 
-    # Selig: gora od TE do LE, potem dol od LE do TE
+    # Selig: upper TE -> LE, then lower LE -> TE
     x = np.concatenate([xu[::-1], xl[1:]])
     y = np.concatenate([yu[::-1], yl[1:]])
     return x, y
 
 
 def from_string(text: str, n_points: int = 160, sharp_te: bool = False):
-    """Skrot: tekst NACA -> (spec, x, y)."""
+    """Shortcut: NACA text -> (spec, x, y)."""
     spec = parse_naca(text)
     x, y = generate(spec, n_points, sharp_te)
     return spec, x, y

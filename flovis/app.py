@@ -1,4 +1,4 @@
-"""Punkt wejscia aplikacji Flovis."""
+"""Flovis application entry point."""
 from __future__ import annotations
 
 import sys
@@ -6,11 +6,11 @@ import sys
 
 def _force_light_palette(app):
     """
-    Wymusza JASNY motyw niezaleznie od systemowego trybu ciemnego.
+    Force a LIGHT theme regardless of the OS dark mode.
 
-    Qt6 na Windows automatycznie przejmuje ciemna palete OS - QSS nadpisuje tylko
-    czesc elementow, wiec bez tego pola/tla bywaja ciemne. Styl Fusion honoruje
-    ustawiona palete i QSS, dajac spojny jasny wyglad na kazdym systemie.
+    Qt6 on Windows adopts the dark OS palette automatically and QSS overrides
+    only some elements, leaving dark fields/backgrounds behind. The Fusion
+    style honors the explicit palette + QSS, giving a consistent light look.
     """
     from PySide6.QtGui import QPalette, QColor
     app.setStyle("Fusion")
@@ -37,11 +37,11 @@ def _force_light_palette(app):
 
 
 def _apply_light_theme():
-    """Wymusza jasny motyw w bibliotekach wykresow (pyqtgraph czarne domyslnie)."""
+    """Force a light theme in the chart libraries (pyqtgraph defaults to black)."""
     try:
         import pyqtgraph as pg
-        pg.setConfigOption("background", "w")     # biale tlo
-        pg.setConfigOption("foreground", "#1f2937")  # ciemne osie/tekst
+        pg.setConfigOption("background", "w")     # white background
+        pg.setConfigOption("foreground", "#1f2937")  # dark axes/text
         pg.setConfigOption("antialias", True)
     except Exception:  # noqa: BLE001
         pass
@@ -67,7 +67,7 @@ def main():
 
     app = QApplication(sys.argv)
     app.setApplicationName("Flovis")
-    _force_light_palette(app)      # wymus jasny motyw mimo ciemnego trybu OS
+    _force_light_palette(app)      # force light theme despite OS dark mode
     _apply_light_theme()
     app.setStyleSheet(load_stylesheet())
 

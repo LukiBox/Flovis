@@ -1,13 +1,13 @@
 """
-Solver AVL (Athena Vortex Lattice) - "tryb dokladny" dla szablonow.
+AVL solver (Athena Vortex Lattice) - the "accurate mode" for templates.
 
-Generuje plik geometrii .avl z AircraftModel (z realnymi profilami przez AFILE),
-uruchamia binarke AVL przez subprocess, po czym parsuje:
-  * sily calkowite (FT) dla kazdego kata -> CL, CD, Cm,
-  * pochodne statecznosci (ST) -> CLa, Cma oraz punkt neutralny Xnp.
+Generates the .avl geometry file from an AircraftModel (with real airfoils
+via AFILE), runs the AVL binary as a subprocess, then parses:
+  * total forces (FT) for each angle -> CL, CD, Cm,
+  * stability derivatives (ST) -> CLa, Cma and the neutral point Xnp.
 
-AVL liczy opor indukowany; opor profilowy dodajemy z biegunow 2D profilu
-(to samo sprzezenie co w VLM), aby biegun byl realistyczny.
+AVL computes induced drag; profile drag is added from the 2D airfoil polars
+(the same coupling as in the VLM) so the polar is realistic.
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def avl_available() -> bool:
 # ---------------------------------------------------------------- generacja .avl
 
 def _write_airfoil_files(model: AircraftModel, out_dir: Path) -> dict[str, Path]:
-    """Zapisuje unikalne profile jako .dat i zwraca mape spec->sciezka."""
+    """Write unique airfoils as .dat files; returns a spec->path map."""
     files: dict[str, Path] = {}
     idx = 0
     for s in model.surfaces:
@@ -54,7 +54,7 @@ def _section(xle, yle, zle, chord, ainc, afile: Path) -> str:
 
 
 def write_avl(model: AircraftModel, path: Path) -> Path:
-    """Buduje plik geometrii .avl. Profile zapisywane obok jako .dat (AFILE)."""
+    """Build the .avl geometry file. Airfoils saved alongside as .dat (AFILE)."""
     path = Path(path)
     out_dir = path.parent
     af_files = _write_airfoil_files(model, out_dir)
@@ -83,7 +83,7 @@ def write_avl(model: AircraftModel, path: Path) -> Path:
             lines.append("0.0")
         lines.append("#")
         if s.is_vertical:
-            # rozpietosc wzdluz Z
+            # span along Z
             dz = s.span
             dx = s.span * np.tan(np.deg2rad(s.sweep_deg))
             lines.append(_section(s.x_le, 0.0, s.z_pos, s.root_chord,
@@ -137,7 +137,7 @@ def solve_avl(model: AircraftModel, velocity: float = 15.0,
             ft = td / f"ft_{i}.txt"
             ft_files.append(ft)
             cmds += [f"A A {a:.3f}", "X", "FT", ft.as_posix()]
-        # pochodne statecznosci w punkcie odniesienia
+        # stability derivatives at the reference point
         st = td / "st.txt"
         a_ref = float(alphas[np.argmin(np.abs(alphas - 2.0))])
         cmds += [f"A A {a_ref:.3f}", "X", "ST", st.as_posix()]
@@ -173,15 +173,15 @@ def solve_avl(model: AircraftModel, velocity: float = 15.0,
             Cma = _find_float(stx, "Cma")
             Xnp = _find_float(stx, "Xnp")
 
-    # opor profilowy z biegunow 2D (sprzezenie jak w VLM)
+    # profile drag from 2D polars (same coupling as in the VLM)
     extras = {}
-    note = "AVL (opor indukowany)"
+    note = "AVL (induced drag)"
     if viscous:
         from .vlm import _profile_drag_model
         cd_of_cl, cl_max_2d, info = _profile_drag_model(model, velocity)
         if cd_of_cl is not None:
             CD = CD_ind + cd_of_cl(CL) + 0.006
-            note = f"AVL + opor profilowy 2D ({info})"
+            note = f"AVL + 2D profile drag ({info})"
             extras["coupling"] = info
             if cl_max_2d:
                 CL = np.minimum(CL, 0.9 * cl_max_2d)
@@ -199,7 +199,7 @@ def solve_avl(model: AircraftModel, velocity: float = 15.0,
         extras=extras,
     )
 
-    # pochodne i punkt neutralny: preferuj wartosci wprost z AVL
+    # derivatives and neutral point: prefer values straight from AVL
     a = res.alpha_deg
     mask = np.abs(a) <= 6
     res.CL_alpha = float(CLa) if CLa is not None else (

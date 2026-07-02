@@ -93,6 +93,13 @@ class MainWindow(QMainWindow):
 
     def _rebuild_ui(self):
         """Rebuild the whole UI in the new language, preserving current state."""
+        # close the VTK interactor first - tearing down a native GL widget
+        # together with its parent can crash on some drivers
+        try:
+            if getattr(self.model3d_tab, "view", None) is not None:
+                self.model3d_tab.view.close()
+        except Exception:  # noqa: BLE001
+            pass
         self.menuBar().clear()
         self._build_ui()
         # restore state into the freshly created tabs

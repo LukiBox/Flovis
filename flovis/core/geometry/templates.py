@@ -1,10 +1,9 @@
 """
-Parametryczne szablony samolotow dla Flovis.
+Parametric aircraft templates for Flovis.
 
-Kazdy szablon to zestaw parametrow geometrycznych z rozsadnymi wartosciami
-domyslnymi. Na ich podstawie budowany jest uproszczony model obliczeniowy
-(plaszczyzny nosne dla VLM). Szablon jest niezalezny od solvera - solver
-(vlm.py) przyjmuje obiekt AircraftModel.
+Each template is a set of geometric parameters with sensible defaults, from
+which a simplified computational model (lifting surfaces for the VLM) is
+built. Templates are solver-independent - solvers take an AircraftModel.
 """
 from __future__ import annotations
 
@@ -23,16 +22,16 @@ class Layout(str, Enum):
 
 @dataclass
 class Surface:
-    """Pojedyncza plaszczyzna nosna (skrzydlo / usterzenie)."""
+    """A single lifting surface (wing / tail)."""
     name: str
-    span: float            # rozpietosc [m] (pelna)
-    root_chord: float      # cieciwa przy kadlubie [m]
-    tip_chord: float       # cieciwa na koncu [m]
-    sweep_deg: float = 0.0    # skos krawedzi natarcia [deg]
+    span: float            # full span [m]
+    root_chord: float      # root chord [m]
+    tip_chord: float       # tip chord [m]
+    sweep_deg: float = 0.0    # leading-edge sweep [deg]
     dihedral_deg: float = 0.0
     incidence_deg: float = 0.0
-    x_le: float = 0.0      # pozycja krawedzi natarcia nasady wzdluz X [m]
-    z_pos: float = 0.0     # pozycja pionowa [m]
+    x_le: float = 0.0      # root leading-edge position along X [m]
+    z_pos: float = 0.0     # vertical position [m]
     airfoil_root: str = "NACA 2412"
     airfoil_tip: str = "NACA 2412"
     is_vertical: bool = False
@@ -63,7 +62,7 @@ class AircraftModel:
     fuselage_length: float = 1.0
     fuselage_diam: float = 0.12
     mass_kg: float = 2.0
-    cg_x: float = 0.25        # polozenie srodka ciezkosci wzdluz X [m]
+    cg_x: float = 0.25        # center-of-gravity position along X [m]
 
     @property
     def wing(self) -> Surface | None:
@@ -98,7 +97,7 @@ class AircraftModel:
         )
 
 
-# ---------- biblioteka szablonow ----------
+# ---------- template library ----------
 
 def _classic(layout: Layout, z_wing: float) -> AircraftModel:
     wing = Surface("Wing", span=1.5, root_chord=0.25, tip_chord=0.18,
@@ -119,10 +118,10 @@ def _classic(layout: Layout, z_wing: float) -> AircraftModel:
 
 
 def make_template(layout) -> AircraftModel:
-    """Zwraca gotowy model z domyslnymi parametrami dla danego ukladu.
+    """Return a ready model with default parameters for the given layout.
 
-    Przyjmuje Layout albo jego wartosc tekstowa (Qt splasza Layout(str,Enum)
-    do zwyklego stringa w userData combo).
+    Accepts a Layout or its string value (Qt flattens Layout(str, Enum)
+    to a plain string in combo userData).
     """
     if not isinstance(layout, Layout):
         layout = Layout(layout)
@@ -132,7 +131,7 @@ def make_template(layout) -> AircraftModel:
         return _classic(layout, z_wing=0.05)
     if layout == Layout.TWIN_BOOM:
         m = _classic(layout, z_wing=0.0)
-        m.surfaces[1].x_le = 0.85   # usterzenia na belkach
+        m.surfaces[1].x_le = 0.85   # tails on the booms
         m.surfaces[2].x_le = 0.85
         return m
     if layout == Layout.PUSHER:

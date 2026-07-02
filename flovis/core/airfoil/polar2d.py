@@ -1,13 +1,13 @@
 """
-Analiza 2D profilu - bieguny (Cl, Cd, Cm) i rozklad cisnienia Cp.
+2D airfoil analysis - polars (Cl, Cd, Cm) and the Cp distribution.
 
-Dwie metody, wspolny wynik (Polar2DResult):
-  * XFoil (subprocess)  - dokladny solver lepki/nielepki (jak w XFLR5/xdirect),
-  * NeuralFoil          - szybka predykcja sieciowa (fallback, gdy brak XFoila).
+Two methods, one result type (Polar2DResult):
+  * XFoil (subprocess)  - the accurate viscous/inviscid solver,
+  * NeuralFoil          - a fast neural predictor (fallback).
 
-Wybor metody: analyze_polar(..., prefer="auto") probuje najpierw XFoil, a gdy
-binarka jest niedostepna lub analiza sie nie powiedzie - przechodzi na
-NeuralFoil. Uzyta metoda jest jasno oznaczona w polu .method wyniku.
+analyze_polar(..., prefer="auto") tries XFoil first and falls back to
+NeuralFoil when the binary is missing or the run fails. The method used
+is clearly marked in the result's .method field.
 """
 from __future__ import annotations
 
@@ -28,15 +28,15 @@ class Polar2DResult:
     reynolds: float
     ncrit: float
     mach: float
-    alpha: np.ndarray                 # zbiegniete katy [deg]
+    alpha: np.ndarray                 # converged angles [deg]
     cl: np.ndarray
     cd: np.ndarray
     cm: np.ndarray
-    # rozklad cisnienia dla wybranego kata (opcjonalnie)
+    # pressure distribution for a chosen angle (optional)
     cp_x: np.ndarray | None = None
     cp: np.ndarray | None = None
     cp_alpha: float = 0.0
-    # parametry pochodne
+    # derived parameters
     cl_max: float = 0.0
     alpha_stall: float = 0.0
     ld_max: float = 0.0
@@ -86,7 +86,7 @@ def xfoil_available() -> bool:
 
 
 def _parse_polar_file(text: str) -> tuple[np.ndarray, ...]:
-    """Parsuje plik biegunowy XFoila (PACC). Zwraca (alpha, cl, cd, cm)."""
+    """Parse an XFoil polar file (PACC). Returns (alpha, cl, cd, cm)."""
     a, cl, cd, cm = [], [], [], []
     for ln in text.splitlines():
         parts = ln.split()
@@ -104,7 +104,7 @@ def _parse_polar_file(text: str) -> tuple[np.ndarray, ...]:
 
 
 def _parse_cp_file(text: str) -> tuple[np.ndarray, np.ndarray]:
-    """Parsuje plik Cp (CPWR): kolumny x, Cp (czasem x, y, Cp)."""
+    """Parse a Cp file (CPWR): columns x, Cp (sometimes x, y, Cp)."""
     xs, cps = [], []
     for ln in text.splitlines():
         parts = ln.split()
@@ -124,10 +124,10 @@ def analyze_xfoil(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
                   mach: float = 0.0, n_panels: int = 200,
                   iter_limit: int = 200, cp_alpha: float | None = None,
                   timeout: float = 90.0) -> Polar2DResult:
-    """Liczy bieguny profilu XFoilem. Rzuca RuntimeError gdy XFoil niedostepny."""
+    """Run airfoil polars in XFoil. Raises RuntimeError when unavailable."""
     exe = binaries.xfoil_path()
     if exe is None:
-        raise RuntimeError("Binarka XFoil niedostepna.")
+        raise RuntimeError("The XFoil binary is not available.")
 
     alphas = np.asarray(alphas, float)
     with tempfile.TemporaryDirectory() as td:
@@ -136,16 +136,16 @@ def analyze_xfoil(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
         polar = td / "polar.txt"
         airfoil.to_dat(dat)
 
-        cmds = ["PLOP", "G F", ""]                  # wylacz grafike
+        cmds = ["PLOP", "G F", ""]                  # disable graphics
         cmds += [f"LOAD {dat.name}", "PANE"]
         cmds += ["OPER", f"VISC {reynolds:.0f}"]
         if mach > 0:
             cmds.append(f"MACH {mach:.3f}")
         cmds += ["VPAR", f"N {ncrit:.2f}", ""]
         cmds += [f"ITER {iter_limit}"]
-        cmds += ["PACC", polar.name, ""]            # akumulacja biegunow
+        cmds += ["PACC", polar.name, ""]            # polar accumulation
 
-        # sweep: od 0 w gore i od 0 w dol (lepsza zbieznosc przy przeciagnieciu)
+        # sweep from 0 up and from 0 down (better convergence near stall)
         pos = sorted(a for a in alphas if a >= 0)
         neg = sorted((a for a in alphas if a < 0), reverse=True)
         for a in pos:
@@ -154,27 +154,27 @@ def analyze_xfoil(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
             cmds.append("INIT")
             for a in neg:
                 cmds.append(f"ALFA {a:.3f}")
-        cmds += ["PACC"]                              # zamknij akumulacje (zostan w OPER)
+        cmds += ["PACC"]                              # close accumulation (stay in OPER)
 
-        # rozklad Cp dla wybranego kata (wciaz w menu OPER)
+        # Cp distribution for the chosen angle (still in the OPER menu)
         cp_target = cp_alpha if cp_alpha is not None else _mid_alpha(alphas)
         cpfile = td / "cp.txt"
         cmds += [f"ALFA {cp_target:.3f}", f"CPWR {cpfile.name}"]
-        cmds += ["", "QUIT", ""]                       # wyjdz z OPER, zamknij XFoil
+        cmds += ["", "QUIT", ""]                       # leave OPER, quit XFoil
 
         script = "\n".join(cmds) + "\n"
         try:
             subprocess.run([exe], input=script, cwd=td, text=True,
                            capture_output=True, timeout=timeout)
         except subprocess.TimeoutExpired as e:
-            raise RuntimeError(f"XFoil przekroczyl limit czasu ({timeout}s).") from e
+            raise RuntimeError(f"XFoil exceeded the time limit ({timeout}s).") from e
 
         if not polar.exists():
-            raise RuntimeError("XFoil nie utworzyl pliku biegunowego "
-                               "(brak zbieznosci lub blad geometrii).")
+            raise RuntimeError("XFoil produced no polar file "
+                               "(no convergence or bad geometry).")
         a, cl, cd, cm = _parse_polar_file(polar.read_text())
         if a.size == 0:
-            raise RuntimeError("XFoil nie zbiegl dla zadnego kata natarcia.")
+            raise RuntimeError("XFoil did not converge for any angle of attack.")
 
         cp_x = cp_arr = None
         if cpfile.exists():
@@ -184,13 +184,13 @@ def analyze_xfoil(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
         method="XFoil", reynolds=reynolds, ncrit=ncrit, mach=mach,
         alpha=a, cl=cl, cd=cd, cm=cm,
         cp_x=cp_x, cp=cp_arr, cp_alpha=float(cp_target),
-        note=f"Zbiegnietych {a.size}/{alphas.size} katow.",
+        note=f"Converged {a.size}/{alphas.size} angles.",
     )
     return res
 
 
 def _mid_alpha(alphas: np.ndarray) -> float:
-    """Kat blisko srodka zakresu (dla rozkladu Cp)."""
+    """An angle near the middle of the range (for the Cp plot)."""
     a = np.asarray(alphas, float)
     return float(a[np.argmin(np.abs(a - np.median(a)))])
 
@@ -211,7 +211,7 @@ def analyze_neuralfoil(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
                        reynolds: float = 3e5, ncrit: float = 9.0,
                        mach: float = 0.0,
                        model_size: str = "large") -> Polar2DResult:
-    """Szybka predykcja biegunow profilu (NeuralFoil)."""
+    """Fast airfoil polar prediction (NeuralFoil)."""
     import neuralfoil as nf
 
     alphas = np.asarray(alphas, float)
@@ -228,8 +228,8 @@ def analyze_neuralfoil(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
     res = Polar2DResult(
         method="NeuralFoil", reynolds=reynolds, ncrit=ncrit, mach=mach,
         alpha=alphas, cl=cl, cd=cd, cm=cm,
-        note=f"Predykcja sieciowa (pewnosc ~{conf:.2f}). "
-             "Dla wynikow miarodajnych uzyj XFoila.",
+        note=f"Neural prediction (confidence ~{conf:.2f}). "
+             "Use XFoil for authoritative results.",
         extras={"confidence": round(conf, 3)},
     )
     return res
@@ -244,9 +244,9 @@ def analyze_polar(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
                   prefer: str = "auto", cp_alpha: float | None = None
                   ) -> Polar2DResult:
     """
-    Liczy bieguny profilu. prefer: 'auto' | 'xfoil' | 'neuralfoil'.
+    Run airfoil polars. prefer: 'auto' | 'xfoil' | 'neuralfoil'.
 
-    'auto' = XFoil jesli dostepny, w razie problemu NeuralFoil.
+    'auto' = XFoil when available, NeuralFoil on any failure.
     """
     if prefer in ("auto", "xfoil") and xfoil_available():
         try:
@@ -255,11 +255,11 @@ def analyze_polar(airfoil: Airfoil, alphas=np.linspace(-4, 14, 19),
         except Exception as e:  # noqa: BLE001
             if prefer == "xfoil":
                 raise
-            print(f"[polar2d] XFoil nie powiodl sie ({e}); probuje NeuralFoil.")
+            print(f"[polar2d] XFoil failed ({e}); trying NeuralFoil.")
     if prefer == "xfoil":
-        raise RuntimeError("XFoil niedostepny, a wymuszono metode 'xfoil'.")
+        raise RuntimeError("XFoil is unavailable but method 'xfoil' was forced.")
     if neuralfoil_available():
         return analyze_neuralfoil(airfoil, alphas, reynolds, ncrit, mach)
     raise RuntimeError(
-        "Brak metody analizy 2D: nie znaleziono XFoila ani NeuralFoil. "
-        "Zainstaluj NeuralFoil (pip install neuralfoil) lub dodaj binarke XFoil.")
+        "No 2D analysis method: neither XFoil nor NeuralFoil was found. "
+        "Install NeuralFoil (pip install neuralfoil) or add the XFoil binary.")

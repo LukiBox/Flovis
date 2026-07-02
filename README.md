@@ -14,7 +14,7 @@ plain-language write-up produced by a **local** AI.
 ![Offline](https://img.shields.io/badge/Runs-100%25%20offline-2563EB)
 ![i18n](https://img.shields.io/badge/UI-English%20%2F%20Polski-2563EB)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Tests](https://img.shields.io/badge/tests-28%20passed-success)
+![Tests](https://img.shields.io/badge/tests-31%20passed-success)
 
 </div>
 
@@ -110,7 +110,7 @@ without AI** — that section is optional. The AI answers in the app's current l
 python -m pytest tests/ -q
 ```
 
-**28 tests**: airfoil engine and editor, solvers (VLM vs analytic vs AVL), XFoil
+**31 tests**: airfoil engine and editor, solvers (VLM vs analytic vs AVL), XFoil
 wrapper + NeuralFoil, **panel method vs VLM (< 10%)**, project I/O, PDF generation.
 
 ---
@@ -172,17 +172,19 @@ tests/                      # pytest
   so the 3D polar has realistic drag and `CL_max`.
 - **AVL** is the "accurate mode" — full stability derivatives and neutral point
   straight from the solver.
-- **STEP panel method** (source-doublet, Kutta condition) gives a qualitative
-  pressure distribution on any CAD geometry.
+- **STEP analysis** fits a planform to your CAD geometry, computes the polar
+  with lifting-line theory, and paints the validated panel-method pressure
+  field onto the real shape.
 
 ---
 
 ## ⚠️ Engineering notes (honest)
 
-- The **STEP panel method** is a **low-order, qualitative** solver — great for
-  visualizing the pressure distribution and quick sanity checks, but for
-  quantitative numbers use **VLM or AVL**. For arbitrary geometry it is calibrated
-  to VLM on a rectangular wing (agreement < ~3%).
+- **STEP analysis** is qualitative by design: forces come from lifting-line
+  theory on the planform fitted to your geometry, and the surface pressure
+  field is the validated panel solution (rectangular wing, < ~3% vs VLM)
+  mapped onto the CAD shape. Great for visualization and sanity checks; for
+  quantitative numbers use **VLM or AVL**.
 - The **analytic estimator** exists for responsiveness ("instant answer");
   trustworthy results come from VLM/AVL.
 

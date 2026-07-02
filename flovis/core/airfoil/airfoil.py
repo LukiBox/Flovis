@@ -1,10 +1,9 @@
 """
-Klasa Airfoil - reprezentacja i operacje na profilu lotniczym.
+The Airfoil class - representation of and operations on an airfoil.
 
-Format wewnetrzny: wspolrzedne w kolejnosci Seliga (gora TE->LE, dol LE->TE),
-ciecziwa znormalizowana 0..1. Operacje: wczytanie/zapis .dat (Selig),
-wygladzanie, skalowanie grubosci, pomiar grubosci i strzalki ugiecia,
-przesuwanie pojedynczych punktow.
+Internal format: coordinates in Selig order (upper TE->LE, lower LE->TE),
+chord normalized to 0..1. Operations: .dat I/O (Selig), smoothing,
+thickness scaling, thickness/camber measurement, single-point editing.
 """
 from __future__ import annotations
 
@@ -57,9 +56,9 @@ class Airfoil:
                 xv, yv = float(parts[0]), float(parts[1])
             except (ValueError, IndexError):
                 if i == 0:
-                    name = ln  # naglowek z nazwa
+                    name = ln  # header with the name
                 continue
-            # pomijamy naglowek typu Lednicer (liczby punktow > 1)
+            # skip Lednicer-style headers (point counts > 1)
             if abs(xv) > 1.5 or abs(yv) > 1.5:
                 continue
             coords.append((xv, yv))
@@ -68,7 +67,7 @@ class Airfoil:
 
     # ----- zapis -----
     def to_dat(self, path: str | Path) -> Path:
-        """Zapis w standardowym formacie Seliga (.dat)."""
+        """Write in the standard Selig format (.dat)."""
         path = Path(path)
         with path.open("w") as f:
             f.write(f"{self.name}\n")
@@ -78,14 +77,14 @@ class Airfoil:
 
     # ----- pomiary -----
     def _split_surfaces(self):
-        """Dzieli kontur na gorna i dolna powierzchnie wzgledem LE (min x)."""
+        """Split the contour into upper/lower surfaces at the LE (min x)."""
         le = int(np.argmin(self.x))
         xu, yu = self.x[: le + 1][::-1], self.y[: le + 1][::-1]  # LE->TE
         xl, yl = self.x[le:], self.y[le:]                         # LE->TE
         return (xu, yu), (xl, yl)
 
     def max_thickness(self) -> tuple[float, float]:
-        """Zwraca (grubosc/c, polozenie x/c)."""
+        """Return (thickness/c, position x/c)."""
         (xu, yu), (xl, yl) = self._split_surfaces()
         xs = np.linspace(0.0, 1.0, 200)
         yu_i = np.interp(xs, xu, yu)
@@ -95,7 +94,7 @@ class Airfoil:
         return float(t[i]), float(xs[i])
 
     def max_camber(self) -> tuple[float, float]:
-        """Zwraca (strzalka ugiecia/c, polozenie x/c)."""
+        """Return (max camber/c, position x/c)."""
         (xu, yu), (xl, yl) = self._split_surfaces()
         xs = np.linspace(0.0, 1.0, 200)
         camber = 0.5 * (np.interp(xs, xu, yu) + np.interp(xs, xl, yl))
@@ -104,7 +103,7 @@ class Airfoil:
 
     # ----- operacje -----
     def scale_thickness(self, factor: float) -> "Airfoil":
-        """Skaluje grubosc wzgledem linii szkieletowej, zachowujac camber."""
+        """Scale thickness about the camber line, preserving camber."""
         (xu, yu), (xl, yl) = self._split_surfaces()
         xs = np.unique(np.concatenate([xu, xl]))
         yu_i = np.interp(xs, xu, yu)
@@ -118,7 +117,7 @@ class Airfoil:
         return Airfoil(x=x, y=y, name=f"{self.name}_t{factor:g}", meta=dict(self.meta))
 
     def smooth(self, smoothing: float = 1e-4, n_points: int | None = None) -> "Airfoil":
-        """Wygladza kontur splajnem parametrycznym (zachowuje LE/TE)."""
+        """Smooth the contour with a parametric spline (keeps LE/TE)."""
         n_points = n_points or len(self.x)
         pts = np.vstack([self.x, self.y])
         tck, _ = splprep(pts, s=smoothing, per=False)
@@ -128,7 +127,7 @@ class Airfoil:
                        name=f"{self.name}_smooth", meta=dict(self.meta))
 
     def move_point(self, index: int, dx: float, dy: float) -> "Airfoil":
-        """Przesuwa pojedynczy punkt (edycja reczna)."""
+        """Move a single point (manual editing)."""
         x = self.x.copy()
         y = self.y.copy()
         x[index] += dx
@@ -136,7 +135,7 @@ class Airfoil:
         return Airfoil(x=x, y=y, name=self.name, meta=dict(self.meta))
 
     def set_point(self, index: int, x: float, y: float) -> "Airfoil":
-        """Ustawia bezwzgledne polozenie punktu (drag w edytorze)."""
+        """Set the absolute position of a point (editor drag)."""
         nx = self.x.copy()
         ny = self.y.copy()
         nx[index] = x
@@ -144,7 +143,7 @@ class Airfoil:
         return Airfoil(x=nx, y=ny, name=self.name, meta=dict(self.meta))
 
     def insert_point(self, index: int) -> "Airfoil":
-        """Wstawia nowy punkt w polowie odcinka miedzy index a index+1."""
+        """Insert a new point halfway between index and index+1."""
         i2 = min(index + 1, len(self.x) - 1)
         nx = 0.5 * (self.x[index] + self.x[i2])
         ny = 0.5 * (self.y[index] + self.y[i2])
@@ -153,7 +152,7 @@ class Airfoil:
         return Airfoil(x=x, y=y, name=self.name, meta=dict(self.meta))
 
     def delete_point(self, index: int) -> "Airfoil":
-        """Usuwa punkt o danym indeksie."""
+        """Delete the point at the given index."""
         x = np.delete(self.x, index)
         y = np.delete(self.y, index)
         return Airfoil(x=x, y=y, name=self.name, meta=dict(self.meta))
@@ -187,7 +186,7 @@ class Airfoil:
 
     # ----- walidacja geometrii -----
     def validate(self) -> list[str]:
-        """Zwraca liste problemow geometrycznych (pusta = profil poprawny)."""
+        """Return a list of geometry issues (empty = valid airfoil)."""
         issues: list[str] = []
         if len(self.x) < 5:
             issues.append("Zbyt malo punktow konturu.")
@@ -198,7 +197,7 @@ class Airfoil:
                 issues.append(
                     f"Powierzchnia {nm}: wspolrzedna x nie jest monotoniczna "
                     "(zawiniecie/przeskok konturu).")
-        # samoprzeciecie: grubosc (gora - dol) nie moze byc ujemna w srodku
+        # self-intersection: thickness (upper - lower) must not go negative inside
         lo = max(float(xu.min()), float(xl.min()))
         hi = min(float(xu.max()), float(xl.max()))
         if hi > lo:
@@ -214,7 +213,7 @@ class Airfoil:
         return not self.validate()
 
     def normalize(self) -> "Airfoil":
-        """Normalizuje ciecziwe do 0..1 (LE w 0, TE w 1)."""
+        """Normalize the chord to 0..1 (LE at 0, TE at 1)."""
         xmin, xmax = self.x.min(), self.x.max()
         chord = xmax - xmin
         if chord == 0:

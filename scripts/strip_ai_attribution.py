@@ -36,7 +36,8 @@ def _run(args, **kw):
 
 
 def scan_files() -> int:
-    r = _run(["git", "grep", "-inE", PATTERN])
+    # exclude this tooling directory - its own regexes would always match
+    r = _run(["git", "grep", "-inE", PATTERN, "--", ":!scripts"])
     if r.stdout.strip():
         print("Possible AI attribution in tracked files (review manually):")
         print(r.stdout)

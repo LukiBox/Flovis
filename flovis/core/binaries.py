@@ -1,13 +1,13 @@
 """
-Lokalizacja zewnetrznych binarek (XFoil, AVL).
+Locating the external binaries (XFoil, AVL).
 
-Kolejnosc szukania:
-  1. zmienna srodowiskowa (FLOVIS_XFOIL / FLOVIS_AVL),
-  2. dolaczony katalog resources/bin (dystrybucja Flovis / PyInstaller),
-  3. systemowy PATH.
+Search order:
+  1. environment variable (FLOVIS_XFOIL / FLOVIS_AVL),
+  2. the bundled resources/bin directory (Flovis / PyInstaller build),
+  3. the system PATH.
 
-Dzieki temu aplikacja dziala "od reki" z dolaczonymi binarkami, a zaawansowany
-uzytkownik moze wskazac wlasna wersje przez zmienna srodowiskowa.
+The app works out of the box with the bundled binaries, and an advanced
+user can point to their own build via an environment variable.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 def _bin_dir() -> Path:
-    """Katalog z dolaczonymi binarkami (dziala tez po spakowaniu PyInstaller)."""
+    """Directory of bundled binaries (also valid inside a PyInstaller build)."""
     if getattr(sys, "frozen", False):  # PyInstaller
         base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
         return base / "resources" / "bin"
@@ -28,10 +28,10 @@ def _bin_dir() -> Path:
 
 def find_binary(name: str, env_var: str | None = None) -> str | None:
     """
-    Zwraca sciezke do binarki lub None, jesli nie znaleziono.
+    Return the path to a binary, or None when not found.
 
-    name     - bazowa nazwa, np. "xfoil" (rozszerzenie .exe dodawane na Windows)
-    env_var  - opcjonalna zmienna srodowiskowa wskazujaca pelna sciezke
+    name     - base name, e.g. "xfoil" (.exe appended on Windows)
+    env_var  - optional environment variable holding a full path
     """
     exe = name + (".exe" if os.name == "nt" else "")
 
@@ -44,7 +44,7 @@ def find_binary(name: str, env_var: str | None = None) -> str | None:
     if candidate.exists():
         return str(candidate)
 
-    # systemowy PATH
+    # system PATH
     found = shutil.which(name) or shutil.which(exe)
     return found
 

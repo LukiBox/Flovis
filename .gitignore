@@ -8,7 +8,7 @@ build/
 dist/
 *.spec.bak
 
-# --- Środowiska wirtualne ---
+# --- Virtual environments ---
 .venv/
 venv/
 env/
@@ -19,17 +19,14 @@ ENV/
 Flovis.exe
 Flovis.new.exe
 
-# --- IDE / edytory ---
+# --- IDE / editors / local tool settings ---
 .idea/
 .vscode/
 *.swp
 *~
-
-# --- Claude Code / lokalne ustawienia (maszynowe) ---
-.claude/
 memory/
 
-# --- Wyniki i pliki użytkownika ---
+# --- User outputs ---
 *.flovis
 *.pdf
 !docs/**/*.pdf
@@ -39,7 +36,7 @@ memory/
 Thumbs.db
 desktop.ini
 
-# --- Testy / cache ---
+# --- Tests / cache ---
 .pytest_cache/
 .coverage
 htmlcov/

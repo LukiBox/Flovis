@@ -1,9 +1,9 @@
 """
-Generator raportow PDF (ReportLab) - wielostronicowy, automatyczny.
+PDF report generator (ReportLab) - multi-page, automatic.
 
-Sekcje: strona tytulowa (z miniatura 3D), parametry, ocena R/Z/Z kluczowych
-parametrow, wykresy bieguna 3D, bieguny profilu 2D + rozklad Cp, tabela
-pochodnych statecznosci, dane surowe, interpretacja AI. Numeracja stron i stopka.
+Sections: title page (with a 3D thumbnail), parameters, R/Y/G rating of key
+parameters, 3D polar charts, 2D airfoil polars + Cp distribution, stability
+derivatives table, raw data, AI interpretation. Page numbers and a footer.
 """
 from __future__ import annotations
 
@@ -169,7 +169,7 @@ def _footer(canvas, doc):
 def build_report(res, output_path: str | Path, model=None,
                  ai_text: str | None = None, airfoil=None,
                  polar2d=None, thumbnail_png: bytes | None = None) -> Path:
-    """Tworzy wielostronicowy raport PDF z wynikow analizy."""
+    """Build the multi-page PDF report from the analysis results."""
     output_path = Path(output_path)
     ss = _styles()
     doc = SimpleDocTemplate(str(output_path), pagesize=A4,
@@ -178,7 +178,7 @@ def build_report(res, output_path: str | Path, model=None,
                             title=f"Flovis - {res.model_name}")
     story = []
 
-    # ---------------- strona tytulowa ----------------
+    # ---------------- title page ----------------
     story.append(Spacer(1, 30 * mm))
     story.append(Paragraph("Flovis", ss["FTitle"]))
     story.append(Paragraph("Aerodynamic analysis report", ss["FBig"]))
@@ -193,7 +193,7 @@ def build_report(res, output_path: str | Path, model=None,
         story.append(_img(thumbnail_png, width=150 * mm))
     story.append(PageBreak())
 
-    # ---------------- parametry ----------------
+    # ---------------- parameters ----------------
     story.append(Paragraph("Analysis parameters", ss["FH2"]))
     rows = [
         ("Method", res.method),
@@ -206,11 +206,11 @@ def build_report(res, output_path: str | Path, model=None,
         rows.append(("Mass", f"{model.mass_kg:.2f} kg"))
     story.append(_kv_table(rows, ss))
 
-    # ---------------- ocena R/Z/Z ----------------
+    # ---------------- R/Y/G rating ----------------
     story.append(Paragraph("Key parameters rating", ss["FH2"]))
     story.append(_assessment_table(res, ss))
 
-    # ---------------- wykresy bieguna 3D ----------------
+    # ---------------- 3D polar charts ----------------
     story.append(Paragraph("Model polars (3D)", ss["FH2"]))
     grid = Table([
         [_img(charts.cl_alpha_png(res)), _img(charts.polar_png(res))],
@@ -220,12 +220,12 @@ def build_report(res, output_path: str | Path, model=None,
                               ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
     story.append(grid)
 
-    # ---------------- statecznosc / pochodne ----------------
+    # ---------------- stability / derivatives ----------------
     story.append(PageBreak())
     story.append(Paragraph("Longitudinal stability and derivatives", ss["FH2"]))
     story.append(_derivatives_table(res, ss))
 
-    # ---------------- profil + bieguny 2D ----------------
+    # ---------------- airfoil + 2D polars ----------------
     if airfoil is not None:
         story.append(Paragraph("Airfoil", ss["FH2"]))
         story.append(_img(charts.airfoil_png(airfoil), width=150 * mm))
@@ -243,12 +243,12 @@ def build_report(res, output_path: str | Path, model=None,
             f"(Cl/Cd)_max = {polar2d.ld_max:.0f}; method: {polar2d.method}.",
             ss["FBody"]))
 
-    # ---------------- dane surowe ----------------
+    # ---------------- raw data ----------------
     story.append(PageBreak())
     story.append(Paragraph("Raw data (3D polar)", ss["FH2"]))
     story.append(_data_table(res, ss))
 
-    # ---------------- interpretacja AI ----------------
+    # ---------------- AI interpretation ----------------
     story.append(Paragraph("Interpretation (AI)", ss["FH2"]))
     if ai_text:
         for para in ai_text.split("\n"):

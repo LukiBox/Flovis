@@ -34,7 +34,7 @@ def _has_heavy_child(widget: QWidget) -> bool:
 
 
 def apply_panel_shadows(root: QWidget):
-    """Naklada miekki cien na wszystkie panele-karty (QGroupBox) bez ciezkich widokow."""
+    """Apply a soft shadow to every card panel (QGroupBox) without heavy views."""
     for gb in root.findChildren(QGroupBox):
         if not _has_heavy_child(gb):
             apply_shadow(gb)

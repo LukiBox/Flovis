@@ -1,20 +1,20 @@
 """
-Metoda panelowa 3D niskiego rzedu (source + doublet, sformulowanie Morino).
+Low-order 3D panel method (source + doublet, Morino formulation).
 
-Niezalezna od zrodla geometrii: dziala na siatce paneli czworokatnych
-(PanelMesh). Wczytanie/uszczelnienie STEP i siatkowanie jest w panel_step.py;
-generator skrzydla prostokatnego (do walidacji) jest tutaj.
+Operates on a structured quad mesh of a thick wing (PanelMesh with .grid set).
+STEP loading/meshing lives in panel_step.py; the rectangular wing generator
+used for validation is here.
 
-Teoria (Katz & Plotkin, "Low-Speed Aerodynamics", rozdz. 10-12):
-  * kazdy panel ma staly source sigma (znany z war. Neumanna: sigma = n . V_inf)
-    oraz staly doublet mu (niewiadoma),
-  * wewnetrzny warunek Dirichleta (potencjal wewn. = 0) w punktach kontrolnych:
+Theory (Katz & Plotkin, "Low-Speed Aerodynamics", ch. 10-12):
+  * each panel carries a constant source sigma (known from the Neumann
+    condition: sigma = n . V_inf) and a constant doublet mu (unknown),
+  * internal Dirichlet condition (zero inner potential) at control points:
         sum_k C_ik mu_k + sum_k B_ik sigma_k = 0,
-  * warunek Kutty: panele sladu o sile mu_w = mu_gora_TE - mu_dol_TE,
-  * z mu liczymy predkosci styczne, Cp i calkujemy sily.
+  * Kutta condition: wake panels of strength mu_w = mu_upperTE - mu_lowerTE,
+  * from mu we get tangential velocities, Cp and integrated forces.
 
-Wspolczynniki C (doublet) i B (source) to potencjaly stalego panelu czworokatnego
-liczone analitycznie w ukladzie lokalnym panelu.
+The C (doublet) and B (source) coefficients are analytic potentials of a
+constant quadrilateral panel evaluated in the panel's local frame.
 """
 from __future__ import annotations
 
@@ -27,15 +27,15 @@ _4PI = 4.0 * np.pi
 
 @dataclass
 class PanelMesh:
-    """Siatka paneli czworokatnych pokrywajaca zamknieta (lub gruba) bryle."""
+    """Quad-panel mesh covering a thick lifting body."""
     nodes: np.ndarray                 # (Nn, 3)
-    panels: np.ndarray                # (Np, 4) indeksy wezlow (CCW patrzac z zewn.)
-    te_pairs: list = field(default_factory=list)   # [(i_gora, i_dol), ...]
-    wake_dir: np.ndarray = None       # kierunek sladu (zwykle wzdluz V_inf)
-    span_axis: int = 1                # os rozpietosci (do raportu)
-    grid: np.ndarray = None           # (n_span, per) indeksy paneli (siatka strukturalna)
+    panels: np.ndarray                # (Np, 4) node indices (CCW seen from outside)
+    te_pairs: list = field(default_factory=list)   # [(i_upper, i_lower), ...]
+    wake_dir: np.ndarray = None       # wake direction (usually the x axis)
+    span_axis: int = 1                # spanwise axis
+    grid: np.ndarray = None           # (n_span, per) panel indices (structured grid)
 
-    # pola liczone
+    # computed fields
     centroids: np.ndarray = None
     normals: np.ndarray = None
     areas: np.ndarray = None
@@ -50,25 +50,6 @@ class PanelMesh:
     def n(self) -> int:
         return len(self.panels)
 
-    def orient_outward(self):
-        """Ustawia normalne tak, by wskazywaly na zewnatrz bryly.
-
-        Heurystyka: normalna skierowana od srodka geometrycznego bryly.
-        Dziala dla powlok wypuklych w przekroju (skrzydla, kadluby).
-        """
-        center = self.nodes.mean(axis=0)
-        for i in range(self.n):
-            out = self.centroids[i] - center
-            if np.dot(self.normals[i], out) < 0:
-                self.normals[i] = -self.normals[i]
-                self.panels[i] = self.panels[i][::-1]
-        # przelicz ramki po ew. odwroceniu winding
-        self._compute_geometry()
-        center = self.nodes.mean(axis=0)
-        for i in range(self.n):
-            if np.dot(self.normals[i], self.centroids[i] - center) < 0:
-                self.normals[i] = -self.normals[i]
-
     def _compute_geometry(self):
         Np = len(self.panels)
         self.centroids = np.zeros((Np, 3))
@@ -78,7 +59,7 @@ class PanelMesh:
         for i, quad in enumerate(self.panels):
             c = self.nodes[quad]
             centroid = c.mean(axis=0)
-            # normalna z iloczynu przekatnych
+            # normal from the diagonals' cross product
             d1 = c[2] - c[0]
             d2 = c[3] - c[1]
             nrm = np.cross(d1, d2)
@@ -87,7 +68,7 @@ class PanelMesh:
                 nrm = np.array([0.0, 0.0, 1.0])
             else:
                 nrm = nrm / np.linalg.norm(nrm)
-            # lokalny uklad: x wzdluz sredniej krawedzi, y = n x x
+            # local frame: x along the mean edge, y = n x x
             lx = (c[1] + c[2]) / 2 - (c[0] + c[3]) / 2
             if np.linalg.norm(lx) < 1e-14:
                 lx = c[1] - c[0]
@@ -103,11 +84,11 @@ class PanelMesh:
 def _panel_potentials(local_corners: np.ndarray, p_local: np.ndarray
                       ) -> tuple[float, float]:
     """
-    Potencjaly jednostkowego stalego source i doublet panelu czworokatnego.
+    Unit constant source and doublet potentials of a quadrilateral panel.
 
-    local_corners: (4,3) rogi panelu w jego ukladzie lokalnym (z~0),
-    p_local:       (3,) punkt pola w tym samym ukladzie.
-    Zwraca (phi_source, phi_doublet) wg Katza & Plotkina (10.95, 10.103).
+    local_corners: (4,3) panel corners in its local frame (z~0),
+    p_local:       (3,) field point in the same frame.
+    Returns (phi_source, phi_doublet) per Katz & Plotkin (10.95, 10.103).
     """
     x, y, z = p_local
     az = abs(z)
@@ -127,12 +108,12 @@ def _panel_potentials(local_corners: np.ndarray, p_local: np.ndarray
         h2 = (x - x2) * (y - y2)
         m = (y2 - y1) / (x2 - x1) if abs(x2 - x1) > 1e-12 else 1e12
 
-        # czlon doublet (kat bryłowy)
+        # doublet term (solid angle)
         t1 = np.arctan2(m * e1 - h1, z * r1)
         t2 = np.arctan2(m * e2 - h2, z * r2)
         phi_d += (t1 - t2)
 
-        # czlon source (logarytm)
+        # source term (logarithm)
         denom = (r1 + r2 - d)
         if abs(denom) < 1e-12:
             denom = 1e-12
@@ -173,9 +154,9 @@ def _to_local(frame, point):
 
 def _panel_potentials_vec(local_corners: np.ndarray, pts: np.ndarray):
     """
-    Zwektoryzowane potencjaly source/doublet stalego panelu czworokatnego
-    dla WIELU punktow pola naraz. pts: (M,3) w ukladzie lokalnym panelu.
-    Zwraca (phi_source (M,), phi_doublet (M,)). ~100x szybsze niz wersja skalarna.
+    Vectorized source/doublet potentials of a constant quadrilateral panel
+    for MANY field points at once. pts: (M,3) in the panel's local frame.
+    Returns (phi_source (M,), phi_doublet (M,)). ~100x faster than scalar.
     """
     x = pts[:, 0]; y = pts[:, 1]; z = pts[:, 2]
     az = np.abs(z)
@@ -280,30 +261,27 @@ def solve_panel(mesh: PanelMesh, v_inf: np.ndarray, wake_length: float = 20.0,
     rhs = -B @ sigma
     mu = np.linalg.solve(A, rhs)
 
-    # predkosci styczne / Cp
-    if mesh.grid is not None:
-        cp, vt = _surface_velocities_structured(mesh, mu, v_inf)
-    else:
-        cp, vt = _surface_velocities(mesh, mu, v_inf)
+    # tangential velocities / Cp (requires the structured grid)
+    if mesh.grid is None:
+        raise ValueError("solve_panel requires a structured mesh (mesh.grid).")
+    cp, vt = _surface_velocities_structured(mesh, mu, v_inf)
 
-    # sily z calkowania cisnienia (do CD / momentu); Cp przy LE bywa zaszumione
+    # pressure-integrated force (used for CD / moment; LE Cp can be noisy)
     rho = 1.225
     q = 0.5 * rho * Vmag ** 2
     dF = -(cp * q * mesh.areas)[:, None] * mesh.normals
     F = dF.sum(axis=0)
 
-    # cyrkulacja sekcji (Kutta-Zukowski) - odporne zrodlo sily nosnej
-    gamma = None
-    if mesh.grid is not None:
-        gamma = _section_circulation(mesh, mu)
+    # sectional circulation (Kutta-Joukowski) - the robust source of lift
+    gamma = _section_circulation(mesh, mu)
 
     return {"mu": mu, "sigma": sigma, "cp": cp, "vt": vt, "F": F,
             "q": q, "gamma": gamma, "Vmag": Vmag}
 
 
 def _section_circulation(mesh, mu):
-    """Cyrkulacja kazdego paska rozpietosci: Gamma = mu_TEgora - mu_TEdol,
-    oraz szerokosc paska dy. Zwraca (gamma[], dy[])."""
+    """Circulation of each spanwise strip: Gamma = mu_TEupper - mu_TElower,
+    plus the strip width dy. Returns (gamma[], dy[])."""
     grid = mesh.grid
     nrow, ncol = grid.shape
     gamma = np.zeros(nrow)
@@ -318,15 +296,30 @@ def _section_circulation(mesh, mu):
 
 
 def cp_clipped(cp: np.ndarray, lo: float = -6.0) -> np.ndarray:
-    """Cp z przycietymi nierealnymi szczytami przy LE (tylko do wizualizacji)."""
+    """Cp with unphysical LE spikes clipped (visualization only)."""
     return np.clip(cp, lo, 1.0)
 
 
+def symmetrize_cp(mesh: PanelMesh, cp: np.ndarray) -> np.ndarray:
+    """Enforce spanwise symmetry of Cp (a symmetric aircraft at zero sideslip
+    MUST have a symmetric field; removes low-order solver noise)."""
+    if mesh.grid is None:
+        return cp
+    grid = mesh.grid
+    nrow, ncol = grid.shape
+    out = cp.copy()
+    for r in range(nrow):
+        rm = nrow - 1 - r
+        for c in range(ncol):
+            out[grid[r, c]] = 0.5 * (cp[grid[r, c]] + cp[grid[rm, c]])
+    return out
+
+
 def _wake_panel(mesh, i_upper, dir_unit, length):
-    """Zwraca 4 rogi (globalne) plaskiego panelu sladu od krawedzi TE panelu."""
+    """Return the 4 (global) corners of a flat wake panel off the TE edge."""
     quad = mesh.panels[i_upper]
     c = mesh.nodes[quad]
-    # krawedz TE = krawedz panelu najbardziej "z tylu" wzgledem dir
+    # TE edge = the panel edge farthest downstream along dir
     proj = c @ dir_unit
     order = np.argsort(proj)
     te_edge = c[order[-2:]]      # dwa najdalsze w kierunku splywu
@@ -337,7 +330,7 @@ def _wake_panel(mesh, i_upper, dir_unit, length):
 
 
 def _wake_influence(corners_global, point) -> float:
-    """Potencjal doublet jednostkowego plaskiego panelu sladu w punkcie."""
+    """Doublet potential of a unit flat wake panel at a point."""
     centroid = corners_global.mean(axis=0)
     d1 = corners_global[2] - corners_global[0]
     d2 = corners_global[3] - corners_global[1]
@@ -358,10 +351,10 @@ def _wake_influence(corners_global, point) -> float:
 
 def _surface_velocities_structured(mesh, mu, v_inf):
     """
-    Predkosci styczne na siatce strukturalnej przez roznicowanie mu:
-      * wzdluz obwodu profilu (kierunek 'chord', indeks kolumny),
-      * wzdluz rozpietosci (indeks wiersza).
-    Cp = 1 - (Qt^2 + Qs^2) / V_inf^2.  (mu = potencjal zaburzenia)
+    Tangential velocities on the structured grid by differencing mu:
+      * along the airfoil contour ('chord' direction, column index),
+      * along the span (row index).
+    Cp = 1 - (Qt^2 + Qs^2) / V_inf^2.  (mu = perturbation potential)
     """
     grid = mesh.grid
     nrow, ncol = grid.shape
@@ -400,57 +393,8 @@ def _surface_velocities_structured(mesh, mu, v_inf):
     return cp, vt
 
 
-def _surface_velocities(mesh, mu, v_inf):
-    """
-    Predkosc styczna z lokalnego gradientu doublet (mu = -potencjal zaburzenia).
-
-    Przybliza gradient mu metoda najmniejszych kwadratow z roznic do sasiadow
-    (po wspolnych krawedziach). Cp = 1 - (Vt/Vinf)^2.
-    """
-    Np = mesh.n
-    Vmag = np.linalg.norm(v_inf)
-    # zbuduj sasiedztwo po wspolnych krawedziach
-    edge_map = {}
-    for pi, quad in enumerate(mesh.panels):
-        for k in range(4):
-            a, b = quad[k], quad[(k + 1) % 4]
-            key = (min(a, b), max(a, b))
-            edge_map.setdefault(key, []).append(pi)
-    neighbors = [[] for _ in range(Np)]
-    for key, plist in edge_map.items():
-        if len(plist) == 2:
-            p, q = plist
-            neighbors[p].append(q)
-            neighbors[q].append(p)
-
-    cp = np.zeros(Np)
-    vt = np.zeros((Np, 3))
-    for i in range(Np):
-        centroid, lx, ly, nrm, _ = mesh._frames[i]
-        nbs = neighbors[i]
-        if len(nbs) >= 2:
-            # dopasuj gradient mu w plaszczyznie panelu: mu_j - mu_i = grad . d
-            D = []
-            dmu = []
-            for j in nbs:
-                d = mesh.centroids[j] - centroid
-                D.append([d @ lx, d @ ly])
-                dmu.append(mu[j] - mu[i])
-            D = np.array(D); dmu = np.array(dmu)
-            g, *_ = np.linalg.lstsq(D, dmu, rcond=None)
-            # predkosc zaburzenia styczna = -grad(mu) (mu = potencjal zaburzenia)
-            v_local = v_inf - (g[0] * lx + g[1] * ly)
-        else:
-            v_local = v_inf - (v_inf @ nrm) * nrm
-        # skladowa styczna
-        v_tan = v_local - (v_local @ nrm) * nrm
-        vt[i] = v_tan
-        cp[i] = 1.0 - (np.linalg.norm(v_tan) / (Vmag + 1e-12)) ** 2
-    return cp, vt
-
-
 # ---------------------------------------------------------------------------
-# Generator skrzydla prostokatnego (walidacja vs VLM)
+# Rectangular wing generator (validated against VLM)
 # ---------------------------------------------------------------------------
 
 def make_wing_mesh(span: float = 1.5, chord: float = 0.25,
@@ -459,13 +403,13 @@ def make_wing_mesh(span: float = 1.5, chord: float = 0.25,
                    tip_chord: float | None = None, sweep_deg: float = 0.0,
                    naca_tip: str | None = None) -> PanelMesh:
     """
-    Buduje zamknieta siatke gruba (gora+dol) skrzydla z profilu NACA.
-    Obsluguje zwezenie (tip_chord) i skos krawedzi natarcia (sweep_deg).
-    Panele czworokatne, krawedz splywu zidentyfikowana (te_pairs).
+    Build a closed thick mesh (upper+lower) of a NACA-profile wing.
+    Supports taper (tip_chord) and leading-edge sweep (sweep_deg).
+    Quad panels; the trailing edge is identified (te_pairs).
 
-    Uwaga: solver niskiego rzedu jest skalibrowany do VLM przy rozdzielczosci
-    ~n_chord=20, n_span=12 (skrzydlo prostokatne) i tam zgadza sie z VLM < ~3%.
-    To metoda pogladowa; do wynikow produkcyjnych uzywaj VLM lub AVL.
+    Note: the low-order solver is calibrated against VLM at a resolution of
+    ~n_chord=20, n_span=12 (rectangular wing), agreeing to < ~3% there.
+    Qualitative method; use VLM or AVL for production numbers.
     """
     from ..airfoil import Airfoil
     af = Airfoil.from_naca(naca, n_points=2 * n_chord + 1)
@@ -488,11 +432,11 @@ def make_wing_mesh(span: float = 1.5, chord: float = 0.25,
     nodes = []
     idx = 0
     for jy, yy in enumerate(ys):
-        frac = abs(yy) / (span / 2) if span else 0.0       # 0 nasada, 1 koniec
+        frac = abs(yy) / (span / 2) if span else 0.0       # 0 root, 1 tip
         c_local = chord + (tip_chord - chord) * frac
         cyu = np.concatenate([yu_i[::-1], yl_i[1:]]) * (1 - frac) + \
               np.concatenate([yu_t[::-1], yl_t[1:]]) * frac
-        dx_le = abs(yy) * np.tan(np.deg2rad(sweep_deg))    # przesuniecie LE skosem
+        dx_le = abs(yy) * np.tan(np.deg2rad(sweep_deg))    # LE shift due to sweep
         for ic in range(nc):
             nodes.append([dx_le + contour_x[ic] * c_local, yy,
                           cyu[ic] * c_local])
@@ -508,15 +452,15 @@ def make_wing_mesh(span: float = 1.5, chord: float = 0.25,
             b = node_id[jy, ic + 1]
             c = node_id[jy + 1, ic + 1]
             d = node_id[jy + 1, ic]
-            panels.append([a, d, c, b])    # CCW na zewnatrz
+            panels.append([a, d, c, b])    # CCW facing outward
     panels = np.array(panels)
     per = nc - 1
     grid = np.zeros((n_span, per), int)
     for jy in range(n_span):
         for ic in range(per):
             grid[jy, ic] = jy * per + ic
-        iu = jy * per + 0           # pierwszy panel sekcji (przy TE gora)
-        il = jy * per + (per - 1)   # ostatni (przy TE dol)
+        iu = jy * per + 0           # first panel of the section (upper TE)
+        il = jy * per + (per - 1)   # last one (lower TE)
         te_pairs.append((iu, il))
 
     return PanelMesh(nodes=nodes, panels=panels, te_pairs=te_pairs,
