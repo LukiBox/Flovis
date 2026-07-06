@@ -1,0 +1,157 @@
+/* ============================================================================
+   Flovis - jasny, minimalistyczny motyw (light mode).
+   Tlo: #F8F9FA, panele biale #FFFFFF, tekst #1F2937, akcent #2563EB.
+   Przyciski gradientowe, miekkie zaokraglenia 6-8px, plaskie zakladki.
+   ========================================================================== */
+
+* {
+    font-family: "Segoe UI Variable", "Segoe UI", "San Francisco", "Roboto", sans-serif;
+    font-size: 13px;
+    color: #1f2937;
+}
+
+QMainWindow, QDialog { background: #f8f9fa; }
+QWidget#central { background: #f8f9fa; }
+
+/* ---------- naglowek ---------- */
+QLabel#h1 { font-size: 22px; font-weight: 800; color: #111827; }
+QLabel#hint { color: #6b7280; font-size: 12px; }
+QLabel#metric { font-size: 22px; font-weight: 800; color: #2563eb; }
+
+/* ---------- przyciski glowne (gradient, plaskie) ---------- */
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #3b82f6, stop:1 #2563eb);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-weight: 600;
+}
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #60a5fa, stop:1 #3b82f6);
+}
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #2563eb, stop:1 #1d4ed8);
+}
+QPushButton:disabled { background: #cbd5e1; color: #f1f5f9; }
+
+/* ---------- przyciski drugorzedne (biale, ramka, niebieski na hover) ---------- */
+QPushButton[flat="true"] {
+    background: #ffffff;
+    color: #2563eb;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+QPushButton[flat="true"]:hover { border: 1px solid #2563eb; background: #f0f6ff; }
+QPushButton[flat="true"]:pressed { background: #e0ecff; }
+QPushButton[flat="true"]:disabled { color: #9ca3af; border: 1px solid #e5e7eb; background: #f8fafc; }
+
+/* ---------- pola wejsciowe ---------- */
+QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 6px 9px;
+    selection-background-color: #2563eb;
+    selection-color: #ffffff;
+}
+QLineEdit:hover, QDoubleSpinBox:hover, QSpinBox:hover, QComboBox:hover { border: 1px solid #9ca3af; }
+QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus {
+    border: 2px solid #2563eb; padding: 5px 8px;
+}
+QComboBox::drop-down { border: none; width: 22px; }
+QComboBox QAbstractItemView {
+    background: #ffffff; border: 1px solid #d1d5db; border-radius: 8px;
+    selection-background-color: #eff6ff; selection-color: #1f2937; outline: none;
+}
+QDoubleSpinBox::up-button, QSpinBox::up-button,
+QDoubleSpinBox::down-button, QSpinBox::down-button {
+    width: 16px; border: none; background: transparent;
+}
+
+/* ---------- zakladki (plaskie, aktywna z niebieskim podkresleniem) ---------- */
+QTabWidget::pane { border: none; background: transparent; top: -1px; }
+QTabBar::tab {
+    background: transparent;
+    padding: 10px 20px;
+    margin-right: 4px;
+    color: #6b7280;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+}
+QTabBar::tab:selected { color: #2563eb; border-bottom: 2px solid #2563eb; font-weight: 700; }
+QTabBar::tab:hover:!selected { color: #374151; }
+
+/* ---------- panele / karty (biale, unosza sie dzieki cieniom z kodu) ---------- */
+QGroupBox {
+    border: 1px solid #eceff3;
+    border-radius: 10px;
+    margin-top: 16px;
+    padding: 14px 12px 12px 12px;
+    background: #ffffff;
+    font-weight: 700;
+}
+QGroupBox::title {
+    subcontrol-origin: margin; left: 14px; top: 2px; padding: 0 6px;
+    color: #374151; font-weight: 700;
+}
+
+/* ---------- tekst / tabele ---------- */
+QTextEdit {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px;
+}
+QTableWidget, QTableView {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    gridline-color: #f1f5f9;
+}
+QHeaderView::section {
+    background: #f3f4f6; border: none; padding: 7px; font-weight: 700; color: #374151;
+}
+
+/* ---------- suwak ---------- */
+QSlider::groove:horizontal { height: 4px; background: #e5e7eb; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: #2563eb; border-radius: 2px; }
+QSlider::handle:horizontal {
+    background: #2563eb; width: 16px; height: 16px; margin: -6px 0; border-radius: 8px;
+}
+QSlider::handle:horizontal:hover { background: #1d4ed8; }
+
+/* ---------- menu ---------- */
+QMenuBar { background: transparent; padding: 2px 4px; }
+QMenuBar::item { padding: 6px 12px; background: transparent; border-radius: 6px; }
+QMenuBar::item:selected { background: #eff6ff; color: #2563eb; }
+QMenu { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 6px; }
+QMenu::item { padding: 7px 22px; border-radius: 6px; }
+QMenu::item:selected { background: #eff6ff; color: #2563eb; }
+QMenu::separator { height: 1px; background: #f1f5f9; margin: 5px 8px; }
+
+/* ---------- status / scroll / checkbox ---------- */
+QStatusBar { background: #ffffff; color: #6b7280; border-top: 1px solid #eef2f7; }
+QScrollArea { background: transparent; border: none; }
+QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
+QScrollBar::handle:vertical { background: #cbd5e1; border-radius: 5px; min-height: 28px; }
+QScrollBar::handle:vertical:hover { background: #94a3b8; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 2px; }
+QScrollBar::handle:horizontal { background: #cbd5e1; border-radius: 5px; min-width: 28px; }
+QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
+QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+
+QCheckBox { spacing: 7px; }
+QCheckBox::indicator {
+    width: 16px; height: 16px; border: 1px solid #d1d5db; border-radius: 5px; background: #ffffff;
+}
+QCheckBox::indicator:hover { border: 1px solid #2563eb; }
+QCheckBox::indicator:checked {
+    background: #2563eb; border: 1px solid #2563eb;
+    image: url(none);
+}
+
+QToolTip {
+    background: #1f2937; color: #ffffff; border: none; border-radius: 6px; padding: 6px 8px;
+}

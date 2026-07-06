@@ -1,0 +1,19 @@
+[project]
+name = "flovis"
+version = "1.2.0"
+description = "Flovis - simplified aerodynamic analysis of flying models, for hobbyists"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Lucas" }]
+keywords = ["aerodynamics", "airfoil", "vlm", "xfoil", "avl", "model-aircraft", "cfd"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flovis*"]
+
+[project.gui-scripts]
+flovis = "flovis.app:main"

@@ -1,0 +1,42 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.spec.bak
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- PyInstaller ---
+*.manifest
+Flovis.exe
+Flovis.new.exe
+
+# --- IDE / editors / local tool settings ---
+.idea/
+.vscode/
+*.swp
+*~
+memory/
+
+# --- User outputs ---
+*.flovis
+*.pdf
+!docs/**/*.pdf
+
+# --- System ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Tests / cache ---
+.pytest_cache/
+.coverage
+htmlcov/

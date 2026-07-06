@@ -1,0 +1,99 @@
+# Changelog
+
+All notable changes to Flovis.
+
+## [1.2.0] — 2026-07-05
+
+### Added
+- **STEP orientation control.** CAD arrives in every axis convention, so
+  the exact-analysis (.stp) path now auto-detects which axes are chord,
+  span and thickness (span = largest extent), and offers a manual override
+  when the guess is wrong. Changing the orientation reruns the fit
+  **instantly on the cached mesh** — no re-mesh — so the pressure gradient
+  and forces come out with credible numbers whichever way the model was
+  exported.
+- **Control surfaces in the model.** Every template now carries ailerons,
+  elevator and rudder (elevons on the flying wing); a new editor in the
+  Templates tab places them (span extent, hinged chord fraction, throw) and
+  the planform view draws them. The placement is saved in the `.flovis`
+  project with the exact schema SimVis consumes, so the simulator derives
+  control power from *your* geometry instead of guessing defaults.
+- **Dark theme (default) + light theme**, using the same semantic-token
+  system as StructVis and SimVis: one palette drives Qt, pyqtgraph,
+  matplotlib and the PyVista 3D view. Switchable live in the header,
+  persisted across runs.
+- Persistent settings store (`%APPDATA%/Flovis/settings.json`) shared by
+  language and theme.
+
+### Fixed
+- **STEP import could stall forever.** gmsh cannot be interrupted in-process,
+  so a pathological or damaged CAD file used to freeze the analysis with a
+  dead "running..." button. Meshing now runs in a **killable subprocess**
+  with a timeout and a working Cancel button — a stuck file gives a clear
+  message instead of hanging the app.
+- **VLM solver dead on non-ASCII user paths.** casadi's plugin loader
+  mangles paths like `C:\Users\Łukasz\...` (narrow-string LoadLibrary) and
+  failed with WIN32 error 126, killing every AeroSandbox solve. Flovis now
+  pre-loads the casadi plugin DLLs through the wide-char loader at solver
+  import; the default "Automatic (VLM)" mode works again on such machines.
+- Language switching no longer erases other saved settings.
+
+## [1.1.0] — 2026-07-02
+
+### Fixed
+- **STEP pressure field completely rebuilt.** The previous direct panel solve
+  on the raw, unstructured STEP mesh was numerically fragile and could produce
+  a saturated, uniformly-blue Cp field. The field is now the validated
+  structured-wing solution **mapped onto the real CAD geometry** (per
+  connected component: chord fraction + span station + upper/lower blend) —
+  smooth, symmetric and correct on single wings and full aircraft alike.
+- **Swept/tapered template surfaces** (e.g. the flying wing) now show a proper
+  pressure gradient: the solve runs on the stable rectangular equivalent and
+  the field is painted onto the displayed swept mesh (same grid topology).
+- **STEP forces** switched to lifting-line theory on the fitted planform —
+  trustworthy at any aspect ratio (the low-order panel solver is only
+  calibrated at NACA 0012 / AR 6 and drifted badly outside that point).
+- Guarded planform extraction against degenerate geometry (empty span bins).
+- The 3D (VTK) view is closed safely before a language-switch UI rebuild.
+
+### Changed
+- STEP meshes are denser (~3000 panels) for smoother visuals — and analysis is
+  *faster*, because no O(N²) solve runs on the STEP mesh anymore.
+- Entire source code (docstrings and comments) translated to English.
+- Removed dead code (unused mica backend, unstructured velocity
+  reconstruction, trailing-edge detection on arbitrary meshes).
+
+### Added
+- STEP regression tests (`tests/test_step.py`): generate a real STEP wing and
+  assert the Cp field is finite, non-saturated, has both suction and
+  stagnation, and is spanwise-symmetric. 31 tests total.
+
+## [1.0.0] — 2026-07-01
+
+First full release. All main paths work end-to-end.
+
+### Added
+- **Bilingual UI** — English by default, one-click switch to Polish (remembered
+  across runs). The AI answers in the selected language.
+- **Interactive airfoil editor** (pyqtgraph): drag points, insert/delete,
+  undo/redo, snap to chord, cosine repaneling, live geometry validation.
+- **2D airfoil polars** — XFoil (subprocess) with Cp distribution and a
+  NeuralFoil fallback.
+- **VLM solver** with real airfoils and VLM↔XFoil coupling (strip theory),
+  full stability derivatives and neutral point.
+- **AVL solver** — generates the `.avl` file, runs the binary, parses forces
+  and stability derivatives.
+- **3D panel method for STEP** (source-doublet, Kutta condition) — vectorized,
+  with a bounded panel count and robust meshing (gmsh).
+- **3D view** (PyVista) with a smooth, symmetric pressure distribution, CG and
+  neutral point.
+- **PDF report** — multi-page: R/Y/G rating, polars, stability derivatives,
+  Cp distribution, AI interpretation, page numbers.
+- **AI (Ollama)** — prompt presets, missing-model detection, full context.
+- **`.flovis` project format** (save/load) + File menu + onboarding.
+- Light, minimalist theme (forced regardless of the OS dark mode).
+- 28 pytest tests, PyInstaller spec.
+
+### Notes
+- The STEP panel method is qualitative (low-order solver); for quantitative
+  results prefer VLM/AVL.
