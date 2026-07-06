@@ -49,6 +49,11 @@ Bilingual UI — English by default; switch to Polish with one click (the choice
 Everything runs locally. Nothing leaves your computer — not even the AI.
 
 ---
+![s1](f1.png)
+![s2](f2.png)
+![s3](f3.png)
+![s4](f4.png)
+---
 
 ## Quick start
 
